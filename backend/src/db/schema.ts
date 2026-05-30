@@ -1,4 +1,4 @@
-import {integer, pgTable, uuid, varchar} from "drizzle-orm/pg-core";
+import {integer, pgTable, primaryKey, uuid, varchar} from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
     id: uuid().primaryKey().defaultRandom(),
@@ -9,3 +9,9 @@ export const usersTable = pgTable("users", {
     profilePicUrl: varchar({ length: 1024 }),
 });
 
+export const friendsTable = pgTable("friends", {
+    userId1: uuid().notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    userId2: uuid().notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+}, (table) => [
+    primaryKey({ columns: [table.userId1, table.userId2] }),
+]);
