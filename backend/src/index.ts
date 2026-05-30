@@ -1,32 +1,28 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
+import { drizzle } from 'drizzle-orm/node-postgres';
+import argon2 from 'argon2'
 
 const app = new Hono()
-
+const db = drizzle(`postgres://${process.env.DATABASE_USER}:%{DATABASE_PASS}@${process.env.DATABASE_HOST}:$process.env.{DATABASE_PORT}/${process.env.DATABASE_NAME}`);
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
 
-type LoginResponse =
-    | { success: true; token: string }
-    | { success: false; error: string }
+app.post('/auth/register', async (c) => {
+  const { email, username, password } = await c.req.json<{
+    email: string
+    username: string
+    password: string
+  }>()
 
-const loginSchema = z.object({
-  email: z.email(),
-  password: z.string().min(8),
+  const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
+
+  const result = await users.insertOne({ email, username, password: passwordHash })
+
+  return c.json({ id: result.insertedId.toHexString() }, 201)
 })
 
-app.post('/api/register', zValidator('json', loginSchema), async (c) => {
-  const { email, password } = c.req.valid('json')
-
-  if (password !== 'correct-horse-battery-staple') {
-    return c.json<LoginResponse>({ success: false, error: 'Invalid credentials' }, 401)
-  }
-
-  return c.json<LoginResponse>({ success: true, token: 'jwt-goes-here' })
-})
 
 serve({
   fetch: app.fetch,
