@@ -6,7 +6,7 @@ export function HomePage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    navigate('/camera')
+    navigate('/rewinds')
   }
 
   return (
@@ -46,7 +46,7 @@ export function HomePage() {
         </form>
 
         <p className="auth-helper-link">
-          Ready to test the main feature? <Link to="/camera">Open BFR Cam</Link>
+          Ready to test the main feature? <Link to="/rewinds">Open Rewinds</Link>
         </p>
 
         <p className="auth-switch">
