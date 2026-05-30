@@ -1,12 +1,30 @@
-import { FormEvent } from 'react'
+import { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { api } from '../lib/api'
 
 export function HomePage() {
   const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    navigate('/rewinds')
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const token = await api.login({ email, password })
+      window.localStorage.setItem('bfr.token', token)
+      window.localStorage.setItem('bfr.email', email)
+      navigate('/camera')
+    } catch (requestError) {
+      console.error(requestError)
+      setError('Login failed. Double-check your email and password.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -31,22 +49,34 @@ export function HomePage() {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
-            <span>Username</span>
-            <input type="text" defaultValue="ALEXMARILYNMAXIMETIMO123" />
+            <span>Email</span>
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </label>
 
           <label className="auth-field">
             <span>Password</span>
-            <input type="password" defaultValue="passwordpassword" />
+            <input
+              required
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
           </label>
 
-          <button className="auth-submit" type="submit">
-            Login
+          {error ? <p className="auth-message auth-message--error">{error}</p> : null}
+
+          <button className="auth-submit" disabled={submitting} type="submit">
+            {submitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
         <p className="auth-helper-link">
-          Ready to test the main feature? <Link to="/rewinds">Open Rewinds</Link>
+          Ready to test the main feature? <Link to="/camera">Open Camera</Link>
         </p>
 
         <p className="auth-switch">

@@ -35,7 +35,7 @@ export default defineConfig({
                 ],
             },
             devOptions: {
-                enabled: true,
+                enabled: false,
             },
         }),
     ],
@@ -43,6 +43,14 @@ export default defineConfig({
         port: 5173,
         proxy: {
             '/api': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+            },
+            '/auth': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+            },
+            '/user': {
                 target: 'http://localhost:3000',
                 changeOrigin: true,
             },

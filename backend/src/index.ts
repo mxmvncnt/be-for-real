@@ -15,12 +15,12 @@ app.route("/auth", auth);
 app.route("/user", user);
 app.route("/videos", videos);
 app.route("/swagger", swagger);
-const port = parseInt(process.env.PORT ?? "3000", 10);
+const serverPort = parseInt(process.env.SERVER_PORT ?? process.env.PORT ?? "3000", 10);
 
 serve(
   {
     fetch: app.fetch,
-    port: Number(process.env.SERVER_PORT),
+    port: serverPort,
   },
   (info) => {
     console.log(`Server is running on http://localhost:${info.port}`);

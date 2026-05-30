@@ -41,13 +41,17 @@ auth.post('/login', async (c) => {
         .where(eq(usersTable.email, email))
         .limit(1);
 
+    if (!user) {
+        return c.json({ error: 'Invalid credentials' }, 401)
+    }
+
     const isPasswordValid = await argon2.verify(user.password, password)
 
     if (!isPasswordValid) {
         return c.json({ error: 'Invalid credentials' }, 401)
     }
 
-    return c.json(String('token'), 201)
+    return c.json(String('token'), 200)
 })
 
 export default auth;
