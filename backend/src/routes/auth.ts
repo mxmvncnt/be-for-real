@@ -45,7 +45,14 @@ auth.post('/login', async (c) => {
         return c.json({ error: 'Invalid credentials' }, 401)
     }
 
-    const isPasswordValid = await argon2.verify(user.password, password)
+    let isPasswordValid = false
+
+    try {
+        isPasswordValid = await argon2.verify(user.password, password)
+    } catch (error) {
+        console.error('Password verification failed for user', email, error)
+        return c.json({ error: 'Invalid credentials' }, 401)
+    }
 
     if (!isPasswordValid) {
         return c.json({ error: 'Invalid credentials' }, 401)

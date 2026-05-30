@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet } from "react-router-dom";
 
 export function AppShell() {
   return (
@@ -24,8 +24,6 @@ export function AppShell() {
       <main className="auth-stage">
         <Outlet />
       </main>
-
-      <footer className="auth-footer">By Alex, Marilyn, Maxime, Timo</footer>
     </div>
-  )
+  );
 }
