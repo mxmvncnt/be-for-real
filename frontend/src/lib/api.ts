@@ -21,7 +21,23 @@ export type LoginPayload = {
   password: string
 }
 
+export type Friend = {
+  id: string
+  username: string
+  email: string
+  profilePicUrl?: string | null
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+
+function getAuthHeaders(): Record<string, string> {
+  const token = window.localStorage.getItem('bfr.token')
+  if (!token) {
+    return {}
+  }
+
+  return { authorization: token }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -50,5 +66,23 @@ export const api = {
     request<RegisterResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+  getFriends: () =>
+    request<Friend[]>('/user/friends', {
+      headers: getAuthHeaders(),
+    }),
+  searchUsers: (query: string) =>
+    request<Friend[]>(`/user/search?q=${encodeURIComponent(query)}`, {
+      headers: getAuthHeaders(),
+    }),
+  addFriend: (friendId: string) =>
+    request<{ message: string }>(`/user/${friendId}/add`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    }),
+  removeFriend: (friendId: string) =>
+    request<{ message: string }>(`/user/${friendId}/remove`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     }),
 }

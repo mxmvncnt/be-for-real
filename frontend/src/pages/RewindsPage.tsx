@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { api, type Friend } from '../lib/api'
 
 type FriendClip = {
   id: string
@@ -66,10 +67,36 @@ const INITIAL_MULTI_REWINDS: MultiRewind[] = [
 export function RewindsPage() {
   const [activeTab, setActiveTab] = useState<'rewinds' | 'multi'>('rewinds')
   const [searchTerm, setSearchTerm] = useState('')
+  const [friendQuery, setFriendQuery] = useState('')
+  const [friends, setFriends] = useState<Friend[]>([])
+  const [friendResults, setFriendResults] = useState<Friend[]>([])
+  const [friendsLoading, setFriendsLoading] = useState(true)
+  const [friendSearchLoading, setFriendSearchLoading] = useState(false)
+  const [friendActionLoadingId, setFriendActionLoadingId] = useState<string | null>(null)
+  const [friendError, setFriendError] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([])
   const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>(INITIAL_MULTI_REWINDS)
+
+  useEffect(() => {
+    async function loadFriends() {
+      setFriendsLoading(true)
+      setFriendError(null)
+
+      try {
+        const nextFriends = await api.getFriends()
+        setFriends(nextFriends)
+      } catch (error) {
+        console.error(error)
+        setFriendError('Could not load your friends.')
+      } finally {
+        setFriendsLoading(false)
+      }
+    }
+
+    void loadFriends()
+  }, [])
 
   const eligibleDays = useMemo(
     () => RAW_REWINDS.filter((group) => group.clips.some((clip) => clip.isYou)),
@@ -167,6 +194,65 @@ export function RewindsPage() {
     ? selectedDay.clips.filter((clip) => clip.isYou || selectedFriendIds.includes(clip.id)).length >= 2
     : false
 
+  const handleFriendSearch = async () => {
+    const query = friendQuery.trim()
+    if (!query) {
+      setFriendResults([])
+      return
+    }
+
+    setFriendSearchLoading(true)
+    setFriendError(null)
+
+    try {
+      const results = await api.searchUsers(query)
+      setFriendResults(results)
+    } catch (error) {
+      console.error(error)
+      setFriendError('Could not search users right now.')
+    } finally {
+      setFriendSearchLoading(false)
+    }
+  }
+
+  const handleAddFriend = async (friend: Friend) => {
+    setFriendActionLoadingId(friend.id)
+    setFriendError(null)
+
+    try {
+      await api.addFriend(friend.id)
+      setFriends((previous) => {
+        if (previous.some((existingFriend) => existingFriend.id === friend.id)) {
+          return previous
+        }
+        return [...previous, friend].sort((left, right) => left.username.localeCompare(right.username))
+      })
+      setFriendResults((previous) => previous.filter((result) => result.id !== friend.id))
+    } catch (error) {
+      console.error(error)
+      setFriendError(`Could not add ${friend.username}.`)
+    } finally {
+      setFriendActionLoadingId(null)
+    }
+  }
+
+  const handleRemoveFriend = async (friend: Friend) => {
+    setFriendActionLoadingId(friend.id)
+    setFriendError(null)
+
+    try {
+      await api.removeFriend(friend.id)
+      setFriends((previous) => previous.filter((existingFriend) => existingFriend.id !== friend.id))
+    } catch (error) {
+      console.error(error)
+      setFriendError(`Could not remove ${friend.username}.`)
+    } finally {
+      setFriendActionLoadingId(null)
+    }
+  }
+
+  const isAlreadyFriend = (friendId: string) => friends.some((friend) => friend.id === friendId)
+
   return (
     <>
       <section className="rewinds-screen">
@@ -191,10 +277,90 @@ export function RewindsPage() {
           <div className="profile-banner__meta">
             <h2>Alex_Phung</h2>
             <p>Eneko corp enthusiast and big gamer</p>
+            <p>{friends.length} friend{friends.length === 1 ? '' : 's'} connected</p>
           </div>
         </section>
 
         <section className="rewinds-panel">
+          <section className="friends-panel" aria-labelledby="friends-title">
+            <div className="friends-panel__header">
+              <h3 id="friends-title">Friends</h3>
+              <span>Search and manage your list</span>
+            </div>
+
+            <div className="friends-panel__search">
+              <input
+                placeholder="Search by username or email"
+                type="text"
+                value={friendQuery}
+                onChange={(event) => setFriendQuery(event.target.value)}
+              />
+              <button type="button" onClick={handleFriendSearch}>
+                {friendSearchLoading ? 'Searching...' : 'Find'}
+              </button>
+            </div>
+
+            {friendError ? <p className="friends-panel__message">{friendError}</p> : null}
+
+            <div className="friends-panel__columns">
+              <div className="friends-panel__column">
+                <h4>Your friends</h4>
+                {friendsLoading ? (
+                  <p className="friends-panel__message">Loading friends...</p>
+                ) : friends.length === 0 ? (
+                  <p className="friends-panel__message">No friends yet.</p>
+                ) : (
+                  <div className="friend-list">
+                    {friends.map((friend) => (
+                      <article key={friend.id} className="friend-card">
+                        <div>
+                          <strong>{friend.username}</strong>
+                          <span>{friend.email}</span>
+                        </div>
+                        <button
+                          disabled={friendActionLoadingId === friend.id}
+                          type="button"
+                          onClick={() => handleRemoveFriend(friend)}
+                        >
+                          {friendActionLoadingId === friend.id ? 'Removing...' : 'Remove'}
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="friends-panel__column">
+                <h4>Search results</h4>
+                {friendResults.length === 0 ? (
+                  <p className="friends-panel__message">Search to add friends.</p>
+                ) : (
+                  <div className="friend-list">
+                    {friendResults.map((friend) => (
+                      <article key={friend.id} className="friend-card">
+                        <div>
+                          <strong>{friend.username}</strong>
+                          <span>{friend.email}</span>
+                        </div>
+                        <button
+                          disabled={friendActionLoadingId === friend.id || isAlreadyFriend(friend.id)}
+                          type="button"
+                          onClick={() => handleAddFriend(friend)}
+                        >
+                          {isAlreadyFriend(friend.id)
+                            ? 'Added'
+                            : friendActionLoadingId === friend.id
+                              ? 'Adding...'
+                              : 'Add'}
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
           <div className="rewinds-tabs">
             <button
               className={`rewinds-tab ${activeTab === 'rewinds' ? 'rewinds-tab--pink' : ''}`}
