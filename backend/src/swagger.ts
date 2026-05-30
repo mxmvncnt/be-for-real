@@ -9,6 +9,17 @@ const openApiDoc = {
     version: "1.0.0",
     description: "API documentation for your service",
   },
+  components: {
+    securitySchemes: {
+      TokenAuth: {
+        type: "apiKey",
+        in: "header",
+        name: "authorization",
+        description:
+          "Raw token in the `authorization` header (no Bearer prefix)",
+      },
+    },
+  },
   paths: {
     "/auth/register": {
       post: {
@@ -58,19 +69,76 @@ const openApiDoc = {
         },
       },
     },
-    "/user/{id}/add": {
+    "/user/{friendId}/add": {
       post: {
-        summary: "Add a friend for a user",
+        summary: "Add a friend for the authenticated user",
+        security: [{ TokenAuth: [] }],
         parameters: [
           {
-            name: "id",
+            name: "friendId",
             in: "path",
             required: true,
-            schema: { type: "string" },
+            schema: { type: "string", format: "uuid" },
+            description: "UUID of the user to add as friend",
           },
         ],
         responses: {
-          "501": { description: "Not implemented" },
+          "201": { description: "Friend added" },
+          "200": { description: "Already friends" },
+          "400": { description: "Cannot add yourself" },
+          "401": { description: "Missing or invalid token" },
+          "404": { description: "Friend not found" },
+          "500": { description: "Database error" },
+        },
+      },
+    },
+    "/user/{friendId}/remove": {
+      post: {
+        summary: "Remove a friend for the authenticated user",
+        security: [{ TokenAuth: [] }],
+        parameters: [
+          {
+            name: "friendId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "UUID of the user to remove from friends",
+          },
+        ],
+        responses: {
+          "200": { description: "Friend removed" },
+          "400": { description: "Cannot remove yourself" },
+          "401": { description: "Missing or invalid token" },
+          "404": { description: "Friend relation not found" },
+          "500": { description: "Database error" },
+        },
+      },
+    },
+    "/user/friends": {
+      get: {
+        summary: "Get friends of the authenticated user",
+        security: [{ TokenAuth: [] }],
+        responses: {
+          "200": {
+            description: "List of friends",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid" },
+                      username: { type: "string" },
+                      email: { type: "string", format: "email" },
+                      profilePicUrl: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Missing or invalid token" },
         },
       },
     },
