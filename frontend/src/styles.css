@@ -320,13 +320,13 @@ input {
 }
 
 .camera-frame {
-  width: min(100%, 760px);
+  width: min(100%, 380px);
 }
 
 .camera-frame__inner {
   position: relative;
   width: 100%;
-  padding-top: 56.25%;
+  padding-top: 148%;
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
@@ -382,7 +382,7 @@ input {
 }
 
 .camera-toolbar {
-  width: min(100%, 760px);
+  width: min(100%, 380px);
   display: grid;
   gap: 16px;
 }
