@@ -9,6 +9,13 @@ export const usersTable = pgTable("users", {
     profilePicUrl: varchar({ length: 1024 }),
 });
 
+export const sessionsTable = pgTable("sessions", {
+    token: varchar({ length: 128 }).primaryKey(),
+    userId: uuid().notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp().notNull(),
+    expiresAt: timestamp().notNull(),
+});
+
 export const friendsTable = pgTable("friends", {
     userId1: uuid().notNull().references(() => usersTable.id, { onDelete: "cascade" }),
     userId2: uuid().notNull().references(() => usersTable.id, { onDelete: "cascade" }),
