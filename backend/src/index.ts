@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/node-postgres';
 import argon2 from 'argon2'
 import {randomUUID} from "node:crypto";
-import {users} from "./db/schema.js";
+import {usersTable} from "./db/schema.js";
 import {Pool} from "pg";
 import {sql} from "drizzle-orm";
 
@@ -24,14 +24,14 @@ app.post('/auth/register', async (c) => {
   const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
 
   const [user] = await db
-      .insert(users)
+      .insert(usersTable)
       .values({
         id: randomUUID(),
         username,
         email,
         password: passwordHash,
       })
-      .returning({ id: users.id, username: users.username, email: users.email })
+      .returning({ id: usersTable.id, username: usersTable.username, email: usersTable.email })
 
   return c.json(user, 201)
 })
