@@ -2,7 +2,7 @@ import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import wallpaper from "../assets/main_wallpaper.jpg";
-import logo from "../assets/logo.png";
+import logo from "/logo.png";
 
 const TRANSITION_DURATION = 680;
 

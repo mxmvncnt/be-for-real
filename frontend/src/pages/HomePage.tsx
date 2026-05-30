@@ -2,7 +2,7 @@ import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import wallpaper from "../assets/main_wallpaper.jpg";
-import logo from "../assets/logo.png";
+import logo from "/logo.png";
 
 const TRANSITION_DURATION = 680;
 
@@ -29,10 +29,10 @@ export function HomePage() {
     setError(null);
 
     try {
-      const token = await api.login({ email, password })
-      window.localStorage.setItem('bfr.token', token)
-      window.localStorage.setItem('bfr.email', email)
-      navigate('/rewinds')
+      const token = await api.login({ email, password });
+      window.localStorage.setItem("bfr.token", token);
+      window.localStorage.setItem("bfr.email", email);
+      navigate("/rewinds");
     } catch (requestError) {
       console.error(requestError);
       setError("Login failed. Double-check your email and password.");
