@@ -110,8 +110,8 @@ const app = new Hono();
 // Serve the OpenAPI document
 app.get("/doc", (c) => c.json(openApiDoc));
 
-// Use the middleware to serve Swagger UI at /ui
-app.get("/ui", swaggerUI({ url: "/swagger/doc" }));
+// Use the middleware to serve Swagger UI at the root of this router (mounted at /swagger)
+app.get("/", swaggerUI({ url: "/swagger/doc" }));
 
 app.get("/health", (c) => c.text("OK"));
 
