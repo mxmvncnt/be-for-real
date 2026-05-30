@@ -1,57 +1,45 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
+import { drizzle } from 'drizzle-orm/node-postgres';
+import argon2 from 'argon2'
+import {randomUUID} from "node:crypto";
+import {users} from "./db/schema.js";
+import {Pool} from "pg";
+import {sql} from "drizzle-orm";
 
 const app = new Hono()
-const port = Number(process.env.PORT ?? 3000)
-const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173'
-
-app.use(
-  '/api/*',
-  cors({
-    origin: frontendOrigin,
-  }),
-)
+const db = drizzle(`postgres://${process.env.DATABASE_USER}:${process.env.DATABASE_PASS}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`)
 
 app.get('/', (c) => {
-  return c.json({
-    name: 'be-for-real-api',
-    status: 'ok',
-  })
+  return c.text('Hello Hono!')
 })
 
-app.get('/api/health', (c) => {
-  return c.json({
-    ok: true,
-    service: 'backend',
-    timestamp: new Date().toISOString(),
-  })
+app.post('/auth/register', async (c) => {
+  const { username, email, password } = await c.req.json<{
+    username: string
+    email: string
+    password: string
+  }>()
+
+  const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
+
+  const [user] = await db
+      .insert(users)
+      .values({
+        id: randomUUID(),
+        username,
+        email,
+        password: passwordHash,
+      })
+      .returning({ id: users.id, username: users.username, email: users.email })
+
+  return c.json(user, 201)
 })
 
-type LoginResponse =
-    | { success: true; token: string }
-    | { success: false; error: string }
-
-const loginSchema = z.object({
-  email: z.email(),
-  password: z.string().min(8),
-})
-
-app.post('/api/register', zValidator('json', loginSchema), async (c) => {
-  const { email, password } = c.req.valid('json')
-
-  if (password !== 'correct-horse-battery-staple') {
-    return c.json<LoginResponse>({ success: false, error: 'Invalid credentials' }, 401)
-  }
-
-  return c.json<LoginResponse>({ success: true, token: 'jwt-goes-here' })
-})
 
 serve({
   fetch: app.fetch,
-  port
+  port: 3000
 }, (info) => {
   console.log(`Server is running on http://localhost:${info.port}`)
 })
