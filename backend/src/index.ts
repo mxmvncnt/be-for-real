@@ -7,6 +7,7 @@ import {usersTable} from "./db/schema.js";
 import {Pool} from "pg";
 import {eq, sql} from "drizzle-orm";
 import auth from "./routes/auth.js";
+import user from "./routes/user.js";
 
 const app = new Hono()
 
@@ -15,6 +16,7 @@ app.get('/', (c) => {
 })
 
 app.route('/auth', auth)
+app.route('/user', user)
 
 serve({
   fetch: app.fetch,
