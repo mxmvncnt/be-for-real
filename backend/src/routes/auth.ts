@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import argon2 from 'argon2'
 import {randomUUID} from "node:crypto";
 import {eq, sql} from "drizzle-orm";
-import {usersTable} from "../db/schema.js";
+import {sessionsTable, usersTable} from "../db/schema.js";
 import {db} from "../db/client.js";
 
 const auth = new Hono()
@@ -58,7 +58,18 @@ auth.post('/login', async (c) => {
         return c.json({ error: 'Invalid credentials' }, 401)
     }
 
-    return c.json(String('token'), 200)
+    const token = randomUUID()
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30)
+
+    await db.insert(sessionsTable).values({
+        token,
+        userId: user.id,
+        createdAt: now,
+        expiresAt,
+    })
+
+    return c.json(token, 200)
 })
 
 export default auth;

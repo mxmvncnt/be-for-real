@@ -32,7 +32,7 @@ export function HomePage() {
       const token = await api.login({ email, password })
       window.localStorage.setItem('bfr.token', token)
       window.localStorage.setItem('bfr.email', email)
-      navigate('/camera')
+      navigate('/rewinds')
     } catch (requestError) {
       console.error(requestError)
       setError('Login failed. Double-check your email and password.')
