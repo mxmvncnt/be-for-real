@@ -9,34 +9,7 @@ const FILTERS = [
   { id: 'sunset', label: 'A', className: 'camera-preview--sunset' },
 ] as const
 
-function getSupportedMimeType() {
-  const candidates = [
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm',
-    'video/mp4',
-  ]
-
-  return candidates.find(
-    (candidate) =>
-      typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidate),
-  )
-}
-
-function isFirefoxBrowser() {
-  return typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)
-}
-
-async function releaseVideoElement(video: HTMLVideoElement | null) {
-  if (!video) {
-    return
-  }
-
-  video.pause()
-  video.srcObject = null
-  video.removeAttribute('src')
-  video.load()
-}
+type FilterId = (typeof FILTERS)[number]['id']
 
 export function CameraPage() {
   const liveVideoRef = useRef<HTMLVideoElement | null>(null)
@@ -55,13 +28,20 @@ export function CameraPage() {
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [retryTick, setRetryTick] = useState(0)
-  const [selectedFilter, setSelectedFilter] =
-    useState<(typeof FILTERS)[number]['id']>('clear')
+  const [selectedFilter, setSelectedFilter] = useState<FilterId>('clear')
 
   const activeFilter = useMemo(
     () => FILTERS.find((filter) => filter.id === selectedFilter) ?? FILTERS[0],
     [selectedFilter],
   )
+
+  const statusMessage = getCameraStatusMessage({
+    cameraError,
+    clipUrl,
+    recording,
+    secondsLeft,
+    cameraReady,
+  })
 
   const releaseCurrentStream = async () => {
     if (timerRef.current) {
@@ -317,125 +297,264 @@ export function CameraPage() {
 
   return (
     <section className="camera-screen" aria-labelledby="camera-title">
-      <div className="camera-screen__header">
-        <h1 id="camera-title">BFR Cam</h1>
-
-        <div className="window-actions" aria-hidden="true">
-          <span className="window-actions__button">_</span>
-          <span className="window-actions__button">[]</span>
-          <Link className="window-actions__button window-actions__button--close" to="/">
-            X
-          </Link>
-        </div>
-      </div>
-
-      <div className="camera-frame">
-        <div className="camera-frame__inner">
-          <div className={`camera-preview ${activeFilter.className}`.trim()}>
-            {clipUrl ? (
-              <video
-                ref={playbackVideoRef}
-                autoPlay
-                className="camera-video"
-                controls
-                loop
-                muted
-                playsInline
-                src={clipUrl}
-              />
-            ) : (
-              <video
-                ref={liveVideoRef}
-                autoPlay
-                className="camera-video"
-                muted
-                playsInline
-              />
-            )}
-
-            <div className="camera-preview__overlay">
-              {cameraError ? (
-                <p className="camera-status camera-status--error">{cameraError}</p>
-              ) : clipUrl ? (
-                <p className="camera-status">Clip recorded. Replay it or shoot again.</p>
-              ) : recording ? (
-                <p className="camera-status">Recording... {secondsLeft}s</p>
-              ) : cameraReady ? (
-                <p className="camera-status">Camera Preview</p>
-              ) : (
-                <p className="camera-status">Opening camera...</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="camera-toolbar">
-        <div className="camera-filter-row" aria-label="Filter shortcuts">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.id}
-              className={`filter-pill ${selectedFilter === filter.id ? 'filter-pill--active' : ''}`}
-              type="button"
-              onClick={() => setSelectedFilter(filter.id)}
-            >
-              <span>{filter.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="camera-actions">
-          <button
-            className="camera-action"
-            disabled={recording}
-            type="button"
-            onClick={handleFlipCamera}
-          >
-            Flip
-          </button>
-
-          {recording ? (
-            <button
-              className="camera-capture camera-capture--recording"
-              type="button"
-              onClick={stopRecording}
-            >
-              <span />
-            </button>
-          ) : (
-            <button
-              className="camera-capture"
-              disabled={!cameraReady}
-              type="button"
-              onClick={handleRecord}
-            >
-              <span className="camera-capture__icon">REC</span>
-            </button>
-          )}
-
-          <button
-            className="camera-action"
-            disabled={!clipUrl || recording}
-            type="button"
-            onClick={handleDiscardClip}
-          >
-            Retake
-          </button>
-        </div>
-
-        <div className="camera-footer-note">
-          <span>Short capture only: 2-5 seconds</span>
-          {cameraError ? (
-            <button className="camera-retry" type="button" onClick={handleRetryCamera}>
-              Retry
-            </button>
-          ) : clipUrl ? (
-            <a className="camera-download" download="bfr-clip.webm" href={clipUrl}>
-              Download clip
-            </a>
-          ) : null}
-        </div>
-      </div>
+      <CameraHeader />
+      <CameraPreview
+        activeFilterClassName={activeFilter.className}
+        cameraError={cameraError}
+        clipUrl={clipUrl}
+        liveVideoRef={liveVideoRef}
+        playbackVideoRef={playbackVideoRef}
+        statusMessage={statusMessage}
+      />
+      <CameraControls
+        cameraError={cameraError}
+        cameraReady={cameraReady}
+        clipUrl={clipUrl}
+        recording={recording}
+        onDiscardClip={handleDiscardClip}
+        onFlipCamera={handleFlipCamera}
+        onSelectFilter={setSelectedFilter}
+        onRetryCamera={handleRetryCamera}
+        onStartRecording={handleRecord}
+        onStopRecording={stopRecording}
+        selectedFilter={selectedFilter}
+      />
     </section>
   )
 }
+
+function getSupportedMimeType() {
+  const candidates = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+    'video/mp4',
+  ]
+
+  return candidates.find(
+    (candidate) =>
+      typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidate),
+  )
+}
+
+function isFirefoxBrowser() {
+  return typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)
+}
+
+async function releaseVideoElement(video: HTMLVideoElement | null) {
+  if (!video) {
+    return
+  }
+
+  video.pause()
+  video.srcObject = null
+  video.removeAttribute('src')
+  video.load()
+}
+
+function getCameraStatusMessage({
+  cameraError,
+  clipUrl,
+  recording,
+  secondsLeft,
+  cameraReady,
+}: {
+  cameraError: string | null
+  clipUrl: string | null
+  recording: boolean
+  secondsLeft: number
+  cameraReady: boolean
+}) {
+  if (cameraError) {
+    return cameraError
+  }
+
+  if (clipUrl) {
+    return 'Clip recorded. Replay it or shoot again.'
+  }
+
+  if (recording) {
+    return `Recording... ${secondsLeft}s`
+  }
+
+  if (cameraReady) {
+    return 'Camera Preview'
+  }
+
+  return 'Opening camera...'
+}
+
+function CameraHeader() {
+  return (
+    <div className="camera-screen__header">
+      <h1 id="camera-title">BFR Cam</h1>
+
+      <div className="window-actions" aria-hidden="true">
+        <span className="window-actions__button">_</span>
+        <span className="window-actions__button">[]</span>
+        <Link className="window-actions__button window-actions__button--close" to="/">
+          X
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function CameraPreview({
+  activeFilterClassName,
+  clipUrl,
+  playbackVideoRef,
+  liveVideoRef,
+  statusMessage,
+  cameraError,
+}: {
+  activeFilterClassName: string
+  clipUrl: string | null
+  playbackVideoRef: { current: HTMLVideoElement | null }
+  liveVideoRef: { current: HTMLVideoElement | null }
+  statusMessage: string
+  cameraError: string | null
+}) {
+  return (
+    <div className="camera-frame">
+      <div className="camera-frame__inner">
+        <div className={`camera-preview ${activeFilterClassName}`.trim()}>
+          {clipUrl ? (
+            <video
+              ref={playbackVideoRef}
+              autoPlay
+              className="camera-video"
+              controls
+              loop
+              muted
+              playsInline
+              src={clipUrl}
+            />
+          ) : (
+            <video
+              ref={liveVideoRef}
+              autoPlay
+              className="camera-video"
+              muted
+              playsInline
+            />
+          )}
+
+          <div className="camera-preview__overlay">
+            <p className={`camera-status ${cameraError ? 'camera-status--error' : ''}`.trim()}>
+              {statusMessage}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CameraFilterRow({
+  selectedFilter,
+  onSelectFilter,
+}: {
+  selectedFilter: FilterId
+  onSelectFilter: (filterId: FilterId) => void
+}) {
+  return (
+    <div className="camera-filter-row" aria-label="Filter shortcuts">
+      {FILTERS.map((filter) => (
+        <button
+          key={filter.id}
+          className={`filter-pill ${selectedFilter === filter.id ? 'filter-pill--active' : ''}`}
+          type="button"
+          onClick={() => onSelectFilter(filter.id)}
+        >
+          <span>{filter.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function CameraControls({
+  selectedFilter,
+  onSelectFilter,
+  recording,
+  cameraReady,
+  clipUrl,
+  cameraError,
+  onFlipCamera,
+  onStartRecording,
+  onStopRecording,
+  onDiscardClip,
+  onRetryCamera,
+}: {
+  selectedFilter: FilterId
+  onSelectFilter: (filterId: FilterId) => void
+  recording: boolean
+  cameraReady: boolean
+  clipUrl: string | null
+  cameraError: string | null
+  onFlipCamera: () => void
+  onStartRecording: () => void
+  onStopRecording: () => void
+  onDiscardClip: () => void
+  onRetryCamera: () => void
+}) {
+  return (
+    <div className="camera-toolbar">
+      <CameraFilterRow selectedFilter={selectedFilter} onSelectFilter={onSelectFilter} />
+
+      <div className="camera-actions">
+        <button
+          className="camera-action"
+          disabled={recording}
+          type="button"
+          onClick={onFlipCamera}
+        >
+          Flip
+        </button>
+
+        {recording ? (
+          <button
+            className="camera-capture camera-capture--recording"
+            type="button"
+            onClick={onStopRecording}
+          >
+            <span />
+          </button>
+        ) : (
+          <button
+            className="camera-capture"
+            disabled={!cameraReady}
+            type="button"
+            onClick={onStartRecording}
+          >
+            <span className="camera-capture__icon">REC</span>
+          </button>
+        )}
+
+        <button
+          className="camera-action"
+          disabled={!clipUrl || recording}
+          type="button"
+          onClick={onDiscardClip}
+        >
+          Retake
+        </button>
+      </div>
+
+      <div className="camera-footer-note">
+        <span>Short capture only: 2-5 seconds</span>
+        {cameraError ? (
+          <button className="camera-retry" type="button" onClick={onRetryCamera}>
+            Retry
+          </button>
+        ) : clipUrl ? (
+          <a className="camera-download" download="bfr-clip.webm" href={clipUrl}>
+            Download clip
+          </a>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
