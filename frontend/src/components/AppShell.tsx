@@ -15,12 +15,6 @@ export function AppShell() {
       <div className="bubble bubble--six" />
       <div className="bubble bubble--seven" />
 
-      <header className="brand-lockup" aria-label="BFR logo">
-        <span className="brand-lockup__letter">B</span>
-        <span className="brand-lockup__letter">F</span>
-        <span className="brand-lockup__letter">R</span>
-      </header>
-
       <main className="auth-stage">
         <Outlet />
       </main>
