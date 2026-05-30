@@ -20,7 +20,7 @@ app.route('/user', user)
 
 serve({
   fetch: app.fetch,
-  port: 3000
+  port: Number(process.env.SERVER_PORT)
 }, (info) => {
   console.log(`Server is running on http://localhost:${info.port}`)
 })
