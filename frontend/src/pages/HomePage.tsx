@@ -1,6 +1,14 @@
-import { Link } from 'react-router-dom'
+import { FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 export function HomePage() {
+  const navigate = useNavigate()
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    navigate('/camera')
+  }
+
   return (
     <section className="auth-window" aria-labelledby="login-title">
       <div className="auth-window__titlebar">
@@ -21,7 +29,7 @@ export function HomePage() {
           </div>
         </div>
 
-        <form className="auth-form">
+        <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
             <span>Username</span>
             <input type="text" defaultValue="ALEXMARILYNMAXIMETIMO123" />
@@ -36,6 +44,10 @@ export function HomePage() {
             Login
           </button>
         </form>
+
+        <p className="auth-helper-link">
+          Ready to test the main feature? <Link to="/camera">Open BFR Cam</Link>
+        </p>
 
         <p className="auth-switch">
           Don&apos;t have an account ? <Link to="/signup">Sign up</Link>
