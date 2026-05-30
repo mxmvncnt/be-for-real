@@ -9,6 +9,17 @@ const openApiDoc = {
     version: "1.0.0",
     description: "API documentation for your service",
   },
+  components: {
+    securitySchemes: {
+      TokenAuth: {
+        type: "apiKey",
+        in: "header",
+        name: "authorization",
+        description:
+          "Raw token in the `authorization` header (no Bearer prefix)",
+      },
+    },
+  },
   paths: {
     "/auth/register": {
       post: {
@@ -58,19 +69,26 @@ const openApiDoc = {
         },
       },
     },
-    "/user/{id}/add": {
+    "/user/{friendId}/add": {
       post: {
-        summary: "Add a friend for a user",
+        summary: "Add a friend for the authenticated user",
+        security: [{ TokenAuth: [] }],
         parameters: [
           {
-            name: "id",
+            name: "friendId",
             in: "path",
             required: true,
-            schema: { type: "string" },
+            schema: { type: "string", format: "uuid" },
+            description: "UUID of the user to add as friend",
           },
         ],
         responses: {
-          "501": { description: "Not implemented" },
+          "201": { description: "Friend added" },
+          "200": { description: "Already friends" },
+          "400": { description: "Cannot add yourself" },
+          "401": { description: "Missing or invalid token" },
+          "404": { description: "Friend not found" },
+          "500": { description: "Database error" },
         },
       },
     },
