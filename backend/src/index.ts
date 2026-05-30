@@ -1,26 +1,30 @@
-import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
-import { drizzle } from 'drizzle-orm/node-postgres';
-import argon2 from 'argon2'
-import {randomUUID} from "node:crypto";
-import {usersTable} from "./db/schema.js";
-import {Pool} from "pg";
-import {eq, sql} from "drizzle-orm";
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
 import auth from "./routes/auth.js";
 import user from "./routes/user.js";
+import videos from "./routes/videos.js";
+import swagger from "./swagger.js";
 
-const app = new Hono()
+const app = new Hono();
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
+app.get("/", (c) => {
+  return c.text("Hello Hono!");
+});
 
-app.route('/auth', auth)
-app.route('/user', user)
+app.route("/auth", auth);
+app.route("/user", user);
+app.route("/videos", videos);
+app.route("/swagger", swagger);
+const port = parseInt(process.env.PORT ?? "3000", 10);
 
-serve({
-  fetch: app.fetch,
-  port: 3000
-}, (info) => {
-  console.log(`Server is running on http://localhost:${info.port}`)
-})
+serve(
+  {
+    fetch: app.fetch,
+    port,
+  },
+  (info) => {
+    console.log(
+      `Server is running on http://localhost:${info.port} — Swagger: http://localhost:${info.port}/swagger/ui`,
+    );
+  },
+);

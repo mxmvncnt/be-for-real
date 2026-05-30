@@ -1,53 +1,13 @@
-import { Hono } from 'hono'
-import argon2 from 'argon2'
-import {randomUUID} from "node:crypto";
-import {usersTable} from "../db/schema.js";
-import {db} from "../db/client.js";
+import { Hono } from "hono";
 
-const video = new Hono()
+const videos = new Hono();
 
-video.post('/clips/:date', async (c) => {
-    const { username, email, password } = await c.req.json<{
-        username: string
-        email: string
-        password: string
-    }>()
+videos.post("/clips/:date", async (c) => {
+  return c.json({ message: "Clips functionality not implemented yet" }, 501);
+});
 
-    const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
+videos.post("/mashup/:date", async (c) => {
+  return c.json({ message: "Mashup functionality not implemented yet" }, 501);
+});
 
-    const [user] = await db
-        .insert(usersTable)
-        .values({
-            id: randomUUID(),
-            username,
-            email,
-            password: passwordHash,
-        })
-        .returning({ id: usersTable.id, username: usersTable.username, email: usersTable.email })
-
-    return c.json(user, 201)
-})
-
-video.post('/mashup/:date', async (c) => {
-    const { username, email, password } = await c.req.json<{
-        username: string
-        email: string
-        password: string
-    }>()
-
-    const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
-
-    const [user] = await db
-        .insert(usersTable)
-        .values({
-            id: randomUUID(),
-            username,
-            email,
-            password: passwordHash,
-        })
-        .returning({ id: usersTable.id, username: usersTable.username, email: usersTable.email })
-
-    return c.json(user, 201)
-})
-
-export default video;
+export default videos;
