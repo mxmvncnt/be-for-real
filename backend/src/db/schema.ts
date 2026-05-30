@@ -1,4 +1,4 @@
-import {integer, pgTable, primaryKey, uuid, varchar} from "drizzle-orm/pg-core";
+import {integer, pgTable, primaryKey, text, timestamp, uuid, varchar} from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
     id: uuid().primaryKey().defaultRandom(),
@@ -15,3 +15,11 @@ export const friendsTable = pgTable("friends", {
 }, (table) => [
     primaryKey({ columns: [table.userId1, table.userId2] }),
 ]);
+
+export const videosTable = pgTable("videos", {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid().notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp().notNull(),
+    videoUrl: varchar({ length: 1024 }).notNull(),
+    type: text({ enum: ["clip", "mashup"] })
+});
