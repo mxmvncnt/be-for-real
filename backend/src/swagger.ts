@@ -92,6 +92,34 @@ const openApiDoc = {
         },
       },
     },
+    "/user/friends": {
+      get: {
+        summary: "Get friends of the authenticated user",
+        security: [{ TokenAuth: [] }],
+        responses: {
+          "200": {
+            description: "List of friends",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid" },
+                      username: { type: "string" },
+                      email: { type: "string", format: "email" },
+                      profilePicUrl: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
     "/videos/clips/{date}": {
       post: {
         summary: "Create clips for a date",

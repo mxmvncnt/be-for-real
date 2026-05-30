@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { usersTable, sessionsTable, friendsTable } from "../db/schema.js";
 import { db } from "../db/client.js";
 
@@ -70,6 +70,61 @@ user.post("/:friendId/add", async (c) => {
     }
     return c.json({ error: "Database error" }, 500);
   }
+});
+
+user.get("/friends", async (c) => {
+  const token = c.req.header("authorization");
+  if (!token) return c.json({ error: "Missing authorization token" }, 401);
+
+  const sessionRows = await db
+    .select()
+    .from(sessionsTable)
+    .where(eq(sessionsTable.token, token))
+    .limit(1);
+
+  if (!sessionRows || sessionRows.length === 0) {
+    return c.json({ error: "Invalid or expired token" }, 401);
+  }
+
+  const currentUserId = String(sessionRows[0].userId);
+
+  const friendRows = await db
+    .select()
+    .from(friendsTable)
+    .where(
+      or(
+        eq(friendsTable.userId1, currentUserId),
+        eq(friendsTable.userId2, currentUserId),
+      ),
+    );
+
+  if (!friendRows || friendRows.length === 0) {
+    return c.json([], 200);
+  }
+
+  const friendIds = friendRows.map((r) =>
+    String(r.userId1) === currentUserId ? String(r.userId2) : String(r.userId1),
+  );
+
+  const friends = await Promise.all(
+    friendIds.map(async (id) => {
+      const rows = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, id))
+        .limit(1);
+      if (!rows || rows.length === 0) return null;
+      const u = rows[0];
+      return {
+        id: String(u.id),
+        username: u.username,
+        email: u.email,
+        profilePicUrl: u.profilePicUrl,
+      };
+    }),
+  );
+
+  return c.json(friends.filter(Boolean), 200);
 });
 
 export default user;
