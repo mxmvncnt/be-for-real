@@ -92,6 +92,28 @@ const openApiDoc = {
         },
       },
     },
+    "/user/{friendId}/remove": {
+      post: {
+        summary: "Remove a friend for the authenticated user",
+        security: [{ TokenAuth: [] }],
+        parameters: [
+          {
+            name: "friendId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "UUID of the user to remove from friends",
+          },
+        ],
+        responses: {
+          "200": { description: "Friend removed" },
+          "400": { description: "Cannot remove yourself" },
+          "401": { description: "Missing or invalid token" },
+          "404": { description: "Friend relation not found" },
+          "500": { description: "Database error" },
+        },
+      },
+    },
     "/user/friends": {
       get: {
         summary: "Get friends of the authenticated user",

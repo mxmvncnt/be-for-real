@@ -127,4 +127,57 @@ user.get("/friends", async (c) => {
   return c.json(friends.filter(Boolean), 200);
 });
 
+user.post("/:friendId/remove", async (c) => {
+  const token = c.req.header("authorization");
+  if (!token) return c.json({ error: "Missing authorization token" }, 401);
+
+  const sessionRows = await db
+    .select()
+    .from(sessionsTable)
+    .where(eq(sessionsTable.token, token))
+    .limit(1);
+
+  if (!sessionRows || sessionRows.length === 0) {
+    return c.json({ error: "Invalid or expired token" }, 401);
+  }
+
+  const currentUserId = String(sessionRows[0].userId);
+  const friendId = String(c.req.param("friendId"));
+
+  if (currentUserId === friendId) {
+    return c.json({ error: "Cannot remove yourself" }, 400);
+  }
+
+  // Canonicalize order
+  const [userId1, userId2] = [currentUserId, friendId].sort();
+
+  // Check existing relation
+  const existing = await db
+    .select()
+    .from(friendsTable)
+    .where(
+      and(eq(friendsTable.userId1, userId1), eq(friendsTable.userId2, userId2)),
+    )
+    .limit(1);
+
+  if (!existing || existing.length === 0) {
+    return c.json({ error: "Friend relation not found" }, 404);
+  }
+
+  // Delete relation
+  try {
+    await db
+      .delete(friendsTable)
+      .where(
+        and(
+          eq(friendsTable.userId1, userId1),
+          eq(friendsTable.userId2, userId2),
+        ),
+      );
+    return c.json({ message: "Friend removed" }, 200);
+  } catch (err) {
+    return c.json({ error: "Database error" }, 500);
+  }
+});
+
 export default user;
