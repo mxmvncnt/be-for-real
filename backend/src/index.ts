@@ -6,57 +6,15 @@ import {randomUUID} from "node:crypto";
 import {usersTable} from "./db/schema.js";
 import {Pool} from "pg";
 import {eq, sql} from "drizzle-orm";
+import auth from "./routes/auth.js";
 
 const app = new Hono()
-const db = drizzle(`postgres://${process.env.DATABASE_USER}:${process.env.DATABASE_PASS}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`)
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
 
-app.post('/auth/register', async (c) => {
-  const { username, email, password } = await c.req.json<{
-    username: string
-    email: string
-    password: string
-  }>()
-
-  const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
-
-  const [user] = await db
-      .insert(usersTable)
-      .values({
-        id: randomUUID(),
-        username,
-        email,
-        password: passwordHash,
-      })
-      .returning({ id: usersTable.id, username: usersTable.username, email: usersTable.email })
-
-  return c.json(user, 201)
-})
-
-app.post('/auth/login', async (c) => {
-    const { email, password } = await c.req.json<{
-        email: string
-        password: string
-    }>()
-
-    const [user] = await db
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.email, email))
-        .limit(1);
-
-    const isPasswordValid = await argon2.verify(user.password, password)
-
-    if (!isPasswordValid) {
-        return c.json({ error: 'Invalid credentials' }, 401)
-    }
-
-    return c.json(String('token'), 201)
-})
-
+app.route('/auth', auth)
 
 serve({
   fetch: app.fetch,
