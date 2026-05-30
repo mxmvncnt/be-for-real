@@ -7,3 +7,4 @@ backend/dist
 frontend/.env
 frontend/.env.local
 backend/.env
+/backend/.idea
