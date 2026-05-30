@@ -1,8 +1,6 @@
-```
+```bash
 npm install
 npm run dev
 ```
 
-```
-open http://localhost:3000
-```
+API server defaults to `http://localhost:3000`.
