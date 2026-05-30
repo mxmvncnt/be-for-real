@@ -8,3 +8,5 @@ frontend/.env
 frontend/.env.local
 backend/.env
 /backend/.idea
+/frontend/.idea
+/frontend/.idea

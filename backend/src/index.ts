@@ -20,11 +20,9 @@ const port = parseInt(process.env.PORT ?? "3000", 10);
 serve(
   {
     fetch: app.fetch,
-    port,
+    port: Number(process.env.SERVER_PORT),
   },
   (info) => {
-    console.log(
-      `Server is running on http://localhost:${info.port} — Swagger: http://localhost:${info.port}/swagger/ui`,
-    );
+    console.log(`Server is running on http://localhost:${info.port}`);
   },
 );
