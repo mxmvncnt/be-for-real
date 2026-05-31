@@ -5,7 +5,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { friendsTable, sessionsTable, videosTable } from "../db/schema.js";
+import { friendsTable, videosTable } from "../db/schema.js";
+import { getUserIdFromRequest } from "../utils/auth.js";
 
 const videos = new Hono();
 
@@ -20,22 +21,8 @@ function getFileExtension(contentType: string) {
 
 videos.get("/uploads/*", serveStatic({ root: UPLOADS_DIR }));
 
-async function getUserIdFromToken(token: string | undefined) {
-  if (!token) return null;
-
-  const sessionRows = await db
-    .select()
-    .from(sessionsTable)
-    .where(eq(sessionsTable.token, token))
-    .limit(1);
-
-  if (!sessionRows || sessionRows.length === 0) return null;
-
-  return String(sessionRows[0].userId);
-}
-
 videos.post("/upload", async (c) => {
-  const userId = await getUserIdFromToken(c.req.header("authorization"));
+  const userId = await getUserIdFromRequest(c);
   if (!userId) {
     return c.json({ error: "Invalid or expired token" }, 401);
   }
@@ -80,7 +67,7 @@ videos.post("/upload", async (c) => {
 });
 
 videos.get("/clips", async (c) => {
-  const userId = await getUserIdFromToken(c.req.header("authorization"));
+  const userId = await getUserIdFromRequest(c);
   if (!userId) {
     return c.json({ error: "Invalid or expired token" }, 401);
   }
@@ -115,7 +102,7 @@ videos.get("/clips", async (c) => {
 });
 
 videos.get("/clips/:id", async (c) => {
-  const userId = await getUserIdFromToken(c.req.header("authorization"));
+  const userId = await getUserIdFromRequest(c);
   if (!userId) {
     return c.json({ error: "Invalid or expired token" }, 401);
   }
@@ -132,7 +119,7 @@ videos.get("/clips/:id", async (c) => {
 });
 
 videos.get("/mashups", async (c) => {
-  const userId = await getUserIdFromToken(c.req.header("authorization"));
+  const userId = await getUserIdFromRequest(c);
   if (!userId) {
     return c.json({ error: "Invalid or expired token" }, 401);
   }
@@ -170,7 +157,7 @@ videos.get("/mashups", async (c) => {
 });
 
 videos.get("/mashups/:id", async (c) => {
-  const userId = await getUserIdFromToken(c.req.header("authorization"));
+  const userId = await getUserIdFromRequest(c);
   if (!userId) {
     return c.json({ error: "Invalid or expired token" }, 401);
   }
