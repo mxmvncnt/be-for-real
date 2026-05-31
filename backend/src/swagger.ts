@@ -460,8 +460,12 @@ const openApiDoc = {
 										description:
 											'Friend user IDs to stack with the creator. At most 3 friends (4 people total).',
 									},
+									musicId: {
+										type: 'string',
+										description: 'Song ID from /videos/music to overlay on the Multi-Rewind',
+									},
 								},
-								required: ['friendsIds'],
+								required: ['friendsIds', 'musicId'],
 							},
 						},
 					},
@@ -469,7 +473,7 @@ const openApiDoc = {
 				responses: {
 					'200': { description: 'Existing Multi-Rewind returned' },
 					'201': { description: 'Multi-Rewind created' },
-					'400': { description: 'Invalid friend count' },
+					'400': { description: 'Invalid friend count or musicId' },
 					'401': { description: 'Missing or invalid token, or not friends with a participant' },
 					'404': { description: 'No clips for selected date' },
 				},

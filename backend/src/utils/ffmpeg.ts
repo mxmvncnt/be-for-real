@@ -31,6 +31,24 @@ export function stackFour(
 	return stackVideos(inputs, outputPath, 480)
 }
 
+export function addMusic(
+	videoPath: string,
+	musicPath: string,
+	startSeconds: number,
+	outputPath: string,
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		ffmpeg(videoPath)
+			.input(musicPath)
+			.inputOptions(['-ss', String(startSeconds)])
+			.outputOptions(['-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-shortest'])
+			.output(outputPath)
+			.on('end', () => resolve())
+			.on('error', (error) => reject(error))
+			.run()
+	})
+}
+
 function stackVideos(inputs: string[], outputPath: string, rowHeight: number): Promise<void> {
 	return new Promise((resolve) => {
 		const filter = [

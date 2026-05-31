@@ -185,7 +185,7 @@ export const api = {
   },
   generateMultiRewind: async (
     dateIsoString: string,
-    payload: { friendsIds: string[] },
+    payload: { friendsIds: string[]; musicId: string },
   ) => {
     const date =
       DateTime.fromISO(dateIsoString).startOf("day").toISO() ?? dateIsoString;
@@ -199,6 +199,7 @@ export const api = {
         },
         body: JSON.stringify({
           friendsIds: payload.friendsIds,
+          musicId: payload.musicId,
         }),
       },
     );

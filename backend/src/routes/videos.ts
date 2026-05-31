@@ -2,13 +2,14 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import path, { join } from 'node:path'
+import path, { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
 import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { friendsTable, usersTable, videosTable } from '../db/schema.js'
 import { getUserIdFromRequest } from '../utils/auth.js'
-import { concatVideos, stackFour, stackThree, stackTwo } from '../utils/ffmpeg.js'
+import { addMusic, concatVideos, stackFour, stackThree, stackTwo } from '../utils/ffmpeg.js'
 import {
 	fetchClipsForUserOnDate,
 	findVideoByFilename,
@@ -20,7 +21,10 @@ import { songs } from '../data/songs.js'
 import areUsersFriends from '../utils/friends.js'
 
 const videos = new Hono()
-const uploadsDir = path.resolve(process.cwd(), 'uploads')
+const moduleRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..')
+const backendRoot = existsSync(join(moduleRoot, 'music')) ? moduleRoot : process.cwd()
+const uploadsDir = join(backendRoot, 'uploads')
+const musicDir = join(backendRoot, 'music')
 
 type VideoType = 'clip' | 'mashup' | 'multi_rewind'
 
@@ -257,7 +261,7 @@ videos.post('/mashup/:date', async (c) => {
 })
 
 videos.post('/multi-rewind/:date', async (c) => {
-	const { friendsIds } = await c.req.json<{ friendsIds: string[] }>()
+	const { friendsIds, musicId } = await c.req.json<{ friendsIds: string[]; musicId?: string }>()
 
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
@@ -269,6 +273,15 @@ videos.post('/multi-rewind/:date', async (c) => {
 	)
 	if (uniqueFriendIds.length < 1 || uniqueFriendIds.length > 3) {
 		return c.json({ error: 'Multi-Rewind requires 1 to 3 friends' }, 400)
+	}
+
+	if (!musicId) {
+		return c.json({ error: 'musicId is required' }, 400)
+	}
+
+	const song = songs.find((entry) => entry.id === musicId)
+	if (!song) {
+		return c.json({ error: 'Invalid musicId' }, 400)
 	}
 
 	for (const friendId of uniqueFriendIds) {
@@ -294,7 +307,7 @@ videos.post('/multi-rewind/:date', async (c) => {
 	}
 
 	const hash = createHash('sha256')
-		.update([...participantIds, ...mashupHashes].join('\n'))
+		.update([...participantIds, ...mashupHashes, musicId].join('\n'))
 		.digest('hex')
 	const filename = `multi_rewind_${hash}.mp4`
 	const outputFile = join(uploadsDir, filename)
@@ -305,7 +318,13 @@ videos.post('/multi-rewind/:date', async (c) => {
 	}
 
 	if (!existsSync(outputFile)) {
-		await stackParticipantVideos(mashupPaths, outputFile)
+		const stackedFile = join(tmpdir(), `multi_rewind_stack_${hash}.mp4`)
+		await stackParticipantVideos(mashupPaths, stackedFile)
+		const musicPath = join(musicDir, song.fileName)
+		if (!existsSync(musicPath)) {
+			return c.json({ error: 'Music file not found' }, 404)
+		}
+		await addMusic(stackedFile, musicPath, song.startSeconds, outputFile)
 	}
 
 	const [video] = await db
