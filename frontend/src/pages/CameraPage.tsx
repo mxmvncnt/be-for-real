@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 
-const MAX_DURATION_SECONDS = 5
+const MAX_DURATION_SECONDS = 2
 
 const FILTERS = [
   { id: 'clear', label: 'A', className: '' },
@@ -589,7 +589,7 @@ function CameraControls({
       </div>
 
       <div className="camera-footer-note">
-        <span>Short capture only: 2-5 seconds</span>
+        <span>Short capture only: 2 seconds max</span>
         {saveError ? <span className="camera-save-error">{saveError}</span> : null}
         {cameraError ? (
           <button className="camera-retry" type="button" onClick={onRetryCamera}>
