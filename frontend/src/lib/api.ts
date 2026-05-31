@@ -60,11 +60,11 @@ export type RewindVideo = Video & {
   isYou: boolean;
 };
 
-export function resolveVideoUrl(video: Pick<Video, "filename">) {
-  return video.filename ? `/videos/${video.filename}` : "";
-}
-
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+
+export function resolveVideoUrl(video: Pick<Video, "filename">) {
+  return video.filename ? `${API_BASE_URL}/videos/${video.filename}` : "";
+}
 
 function getAuthHeaders(): Record<string, string> {
   const token = window.localStorage.getItem("bfr.token");

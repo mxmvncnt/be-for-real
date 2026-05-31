@@ -97,7 +97,12 @@ videos.get('/feed', async (c) => {
 	const friendRows = await db
 		.select()
 		.from(friendsTable)
-		.where(or(eq(friendsTable.userId1, currentUserId), eq(friendsTable.userId2, currentUserId)))
+		.where(
+			and(
+				eq(friendsTable.confirmed, 1),
+				or(eq(friendsTable.userId1, currentUserId), eq(friendsTable.userId2, currentUserId)),
+			),
+		)
 
 	const friendIds = friendRows.map((row) =>
 		String(row.userId1) === currentUserId ? String(row.userId2) : String(row.userId1),

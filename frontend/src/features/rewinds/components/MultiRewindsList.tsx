@@ -1,3 +1,4 @@
+import { resolveVideoUrl } from '../../../lib/api'
 import type { MultiRewind } from '../types'
 
 type MultiRewindsListProps = {
@@ -34,7 +35,11 @@ export function MultiRewindsList({ rewinds, onOpenMultiRewind }: MultiRewindsLis
                     muted
                     playsInline
                     preload="metadata"
-                    src={participant.clips[0] ? `/videos/${participant.clips[0].filename}` : undefined}
+                    src={
+                      participant.clips[0]
+                        ? resolveVideoUrl(participant.clips[0])
+                        : undefined
+                    }
                   />
                 ))}
               </div>
