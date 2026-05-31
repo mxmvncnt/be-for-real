@@ -565,6 +565,16 @@ input {
   color: #fff;
 }
 
+a.window-actions__button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rewinds-logout {
+  font-size: 1.08rem;
+  text-decoration: none;
+}
+
 .auth-window__body {
   padding: 22px 20px 28px;
 }
