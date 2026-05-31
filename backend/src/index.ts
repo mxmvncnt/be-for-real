@@ -6,8 +6,11 @@ import auth from './routes/auth.js'
 import user from './routes/user.js'
 import videos from './routes/videos.js'
 import swagger from './swagger.js'
+import { logger } from "hono/logger"
 
 const app = new Hono()
+
+app.use(logger())
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
