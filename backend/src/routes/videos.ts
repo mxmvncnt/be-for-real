@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
-import path from 'node:path'
+import path, { join } from 'node:path'
 import { Hono } from 'hono'
-import { desc, eq, inArray, or } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { friendsTable, usersTable, videosTable } from '../db/schema.js'
-import { getUserIdFromRequest } from '../utils/auth.js'
+import { getUserFromRequest, getUserIdFromRequest } from '../utils/auth.js'
+import mergeConcatDemuxer, { concatVideos } from '../utils/ffmpeg.js'
+import { tmpdir } from 'node:os'
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
@@ -136,11 +138,52 @@ videos.get('/feed', async (c) => {
 	return c.json(feed, 200)
 })
 
-videos.post('/mashup/:date', async () => {
-	return new Response(JSON.stringify({ message: 'Mashup functionality not implemented yet' }), {
-		status: 501,
-		headers: { 'Content-Type': 'application/json' },
-	})
+videos.get('/mashup/:date', async (c) => {
+	const userId = await getUserIdFromRequest(c)
+	if (!userId) {
+		return c.json({ error: 'Invalid or expired token' }, 401)
+	}
+
+	const dateParam = String(c.req.param('date'))
+	const date = new Date(dateParam)
+	const next = new Date(date)
+	next.setUTCDate(next.getUTCDate() + 1)
+
+	const videos = await db
+		.select()
+		.from(videosTable)
+		.where(and(gte(videosTable.createdAt, date), lt(videosTable.createdAt, next)))
+
+	const filePaths = videos.map((video) => `file ${uploadsDir}/${video.filename}`)
+
+	const uuid = randomUUID()
+	const filename = `mashup_${uuid}.mp4`
+	const outputFile = join(uploadsDir, filename)
+	const listPath = join(tmpdir(), `${uuid}.txt`)
+	const manifest = filePaths.join('\n')
+	await writeFile(listPath, manifest, 'utf8')
+	await concatVideos(listPath, outputFile)
+
+	const [video] = await db
+		.insert(videosTable)
+		.values({
+			id: randomUUID(),
+			userId: userId,
+			createdAt: new Date(),
+			videoUrl: ``,
+			filename,
+			type: 'clip',
+		})
+		.returning({
+			id: videosTable.id,
+			userId: videosTable.userId,
+			createdAt: videosTable.createdAt,
+			videoUrl: videosTable.videoUrl,
+			filename: videosTable.filename,
+			type: videosTable.type,
+		})
+
+	return c.json(video, 201)
 })
 
 export default videos
