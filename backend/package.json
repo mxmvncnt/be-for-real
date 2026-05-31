@@ -5,7 +5,9 @@
     "dev": "tsx watch --env-file=.env src/index.ts",
     "build": "tsc",
     "start": "node --env-file=.env dist/src/index.js",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "format": "npx rettier --write .",
+    "format:check": "npx prettier --check ."
   },
   "dependencies": {
     "@hono/node-server": "^1.19.14",
@@ -18,6 +20,7 @@
     "hono": "^4.12.23",
     "mongodb": "^7.2.0",
     "pg": "^8.21.0",
+    "prettier": "^3.8.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
