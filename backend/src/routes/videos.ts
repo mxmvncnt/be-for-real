@@ -15,7 +15,7 @@ import areUsersFriends from '../utils/friends.js'
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
 
-type VideoType = 'clip' | 'mashup'
+type VideoType = 'clip' | 'mashup' | 'multi_rewind'
 
 type VideoFeedItem = {
 	id: string

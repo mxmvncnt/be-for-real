@@ -40,7 +40,7 @@ export const videosTable = pgTable('videos', {
 	createdAt: timestamp().notNull(),
 	videoUrl: varchar({ length: 1024 }).notNull().unique(),
 	filename: varchar({ length: 1024 }).notNull().unique(),
-	type: text({ enum: ['clip', 'mashup'] }),
+	type: text({ enum: ['clip', 'mashup', 'multi_rewind'] }),
 })
 
 export const commentsTable = pgTable('comments', {
