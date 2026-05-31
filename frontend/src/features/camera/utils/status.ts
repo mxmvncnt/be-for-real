@@ -18,7 +18,7 @@ export function getCameraStatusMessage({
   }
 
   if (clipUrl) {
-    return 'Clip recorded. Replay it or shoot again.'
+    return ''
   }
 
   if (recording) {

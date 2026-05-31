@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react'
+import cameraFrameImage from '../../../assets/camera.png'
+
 type CameraPreviewProps = {
   activeFilterClassName: string
   cameraFacingMode: 'user' | 'environment'
@@ -6,6 +9,7 @@ type CameraPreviewProps = {
   liveVideoRef: { current: HTMLVideoElement | null }
   statusMessage: string
   cameraError: string | null
+  children?: ReactNode
 }
 
 export function CameraPreview({
@@ -16,6 +20,7 @@ export function CameraPreview({
   liveVideoRef,
   statusMessage,
   cameraError,
+  children,
 }: CameraPreviewProps) {
   return (
     <div className="camera-frame">
@@ -48,6 +53,13 @@ export function CameraPreview({
             </p>
           </div>
         </div>
+        <img
+          alt=""
+          aria-hidden="true"
+          className="camera-frame__chrome"
+          src={cameraFrameImage}
+        />
+        {children}
       </div>
     </div>
   )

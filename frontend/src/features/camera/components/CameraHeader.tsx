@@ -2,16 +2,24 @@ import { Link } from 'react-router-dom'
 
 export function CameraHeader() {
   return (
-    <div className="camera-screen__header">
-      <h1 id="camera-title">BFR Cam</h1>
+    <header className="camera-screen__header rewinds-topbar">
+      <h1 id="camera-title">BFR CAM</h1>
 
-      <div className="window-actions" aria-hidden="true">
-        <span className="window-actions__button">─</span>
-        <span className="window-actions__button">□</span>
-        <Link className="window-actions__button window-actions__button--close" to="/rewinds">
-          Back
+      <div className="window-actions">
+        <span className="window-actions__button" aria-hidden="true">
+          -
+        </span>
+        <span className="window-actions__button" aria-hidden="true">
+          □
+        </span>
+        <Link
+          aria-label="Close camera and return to rewinds"
+          className="window-actions__button window-actions__button--close"
+          to="/rewinds"
+        >
+          ✖
         </Link>
       </div>
-    </div>
+    </header>
   )
 }
