@@ -23,16 +23,7 @@ app.get("/uploads/:filename", async (c) => {
 
   try {
     const fileBuffer = await readFile(absolutePath);
-    const extension = path.extname(filename).toLowerCase();
-    const contentType =
-      extension === ".mp4"
-        ? "video/mp4"
-        : extension === ".mov"
-          ? "video/quicktime"
-          : "video/webm";
-
     return c.body(fileBuffer, 200, {
-      "Content-Type": contentType,
       "Cache-Control": "no-store",
     });
   } catch {
