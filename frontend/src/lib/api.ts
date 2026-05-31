@@ -124,6 +124,23 @@ export const api = {
 
     return response.json() as Promise<RewindVideo>;
   },
+  uploadMashup: async (video: Blob, createdAt: string) => {
+    const formData = new FormData();
+    formData.append("video", video, `mashup-${createdAt}.webm`);
+    formData.append("createdAt", createdAt);
+
+    const response = await fetch(`${API_BASE_URL}/videos/mashup`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return response.json() as Promise<RewindVideo>;
+  },
   getRewindFeed: () =>
     request<RewindVideo[]>("/videos/feed", {
       headers: getAuthHeaders(),
