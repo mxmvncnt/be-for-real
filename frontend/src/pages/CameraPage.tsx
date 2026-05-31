@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { api } from '../lib/api'
 
 const MAX_DURATION_SECONDS = 5
 
@@ -23,12 +24,17 @@ export function CameraPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [availableDeviceIds, setAvailableDeviceIds] = useState<string[]>([])
   const [clipUrl, setClipUrl] = useState<string | null>(null)
+  const [clipBlob, setClipBlob] = useState<Blob | null>(null)
+  const [clipCreatedAt, setClipCreatedAt] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(MAX_DURATION_SECONDS)
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [retryTick, setRetryTick] = useState(0)
   const [selectedFilter, setSelectedFilter] = useState<FilterId>('clear')
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [savingClip, setSavingClip] = useState(false)
+  const [clipSaved, setClipSaved] = useState(false)
 
   const activeFilter = useMemo(
     () => FILTERS.find((filter) => filter.id === selectedFilter) ?? FILTERS[0],
@@ -229,10 +235,15 @@ export function CameraPage() {
     }
 
     recorder.onstop = () => {
+      const createdAt = new Date().toISOString()
       const blob = new Blob(chunksRef.current, {
         type: recorder.mimeType || 'video/webm',
       })
       const nextUrl = URL.createObjectURL(blob)
+      setClipBlob(blob)
+      setClipCreatedAt(createdAt)
+      setClipSaved(false)
+      setSaveError(null)
       setClipUrl((previousUrl) => {
         if (previousUrl) {
           URL.revokeObjectURL(previousUrl)
@@ -279,12 +290,35 @@ export function CameraPage() {
   }
 
   const handleDiscardClip = () => {
+    setClipBlob(null)
+    setClipCreatedAt(null)
+    setClipSaved(false)
+    setSaveError(null)
     setClipUrl((previousUrl) => {
       if (previousUrl) {
         URL.revokeObjectURL(previousUrl)
       }
       return null
     })
+  }
+
+  const handleSaveClip = async () => {
+    if (!clipBlob || !clipCreatedAt || savingClip || clipSaved) {
+      return
+    }
+
+    setSavingClip(true)
+    setSaveError(null)
+
+    try {
+      await api.uploadClip(clipBlob, clipCreatedAt)
+      setClipSaved(true)
+    } catch (error) {
+      console.error(error)
+      setSaveError('Could not save your rewind. Try logging in again.')
+    } finally {
+      setSavingClip(false)
+    }
   }
 
   const handleRetryCamera = () => {
@@ -309,12 +343,16 @@ export function CameraPage() {
       <CameraControls
         cameraError={cameraError}
         cameraReady={cameraReady}
+        clipSaved={clipSaved}
         clipUrl={clipUrl}
         recording={recording}
+        saveError={saveError}
+        savingClip={savingClip}
         onDiscardClip={handleDiscardClip}
         onFlipCamera={handleFlipCamera}
         onSelectFilter={setSelectedFilter}
         onRetryCamera={handleRetryCamera}
+        onSaveClip={handleSaveClip}
         onStartRecording={handleRecord}
         onStopRecording={stopRecording}
         selectedFilter={selectedFilter}
@@ -480,24 +518,32 @@ function CameraControls({
   recording,
   cameraReady,
   clipUrl,
+  clipSaved,
   cameraError,
+  saveError,
+  savingClip,
   onFlipCamera,
   onStartRecording,
   onStopRecording,
   onDiscardClip,
   onRetryCamera,
+  onSaveClip,
 }: {
   selectedFilter: FilterId
   onSelectFilter: (filterId: FilterId) => void
   recording: boolean
   cameraReady: boolean
   clipUrl: string | null
+  clipSaved: boolean
   cameraError: string | null
+  saveError: string | null
+  savingClip: boolean
   onFlipCamera: () => void
   onStartRecording: () => void
   onStopRecording: () => void
   onDiscardClip: () => void
   onRetryCamera: () => void
+  onSaveClip: () => void
 }) {
   return (
     <div className="camera-toolbar">
@@ -544,17 +590,32 @@ function CameraControls({
 
       <div className="camera-footer-note">
         <span>Short capture only: 2-5 seconds</span>
+        {saveError ? <span className="camera-save-error">{saveError}</span> : null}
         {cameraError ? (
           <button className="camera-retry" type="button" onClick={onRetryCamera}>
             Retry
           </button>
         ) : clipUrl ? (
-          <a className="camera-download" download="bfr-clip.webm" href={clipUrl}>
-            Download clip
-          </a>
+          <>
+            <button
+              className="camera-save"
+              disabled={savingClip || clipSaved}
+              type="button"
+              onClick={onSaveClip}
+            >
+              {clipSaved ? 'Saved to Rewinds' : savingClip ? 'Saving...' : 'Save rewind'}
+            </button>
+            <a className="camera-download" download="bfr-clip.webm" href={clipUrl}>
+              Download clip
+            </a>
+            {clipSaved ? (
+              <Link className="camera-download" to="/rewinds">
+                View rewinds
+              </Link>
+            ) : null}
+          </>
         ) : null}
       </div>
     </div>
   )
 }
-

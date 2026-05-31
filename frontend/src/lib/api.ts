@@ -28,6 +28,16 @@ export type Friend = {
   profilePicUrl?: string | null
 }
 
+export type RewindVideo = {
+  id: string
+  userId: string
+  username: string
+  createdAt: string
+  videoUrl: string
+  type: string | null
+  isYou: boolean
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 function getAuthHeaders(): Record<string, string> {
@@ -83,6 +93,27 @@ export const api = {
   removeFriend: (friendId: string) =>
     request<{ message: string }>(`/user/${friendId}/remove`, {
       method: 'POST',
+      headers: getAuthHeaders(),
+    }),
+  uploadClip: async (video: Blob, createdAt: string) => {
+    const formData = new FormData()
+    formData.append('video', video, `rewind-${createdAt}.webm`)
+    formData.append('createdAt', createdAt)
+
+    const response = await fetch(`${API_BASE_URL}/videos/clips`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    return response.json() as Promise<RewindVideo>
+  },
+  getRewindFeed: () =>
+    request<RewindVideo[]>('/videos/feed', {
       headers: getAuthHeaders(),
     }),
 }

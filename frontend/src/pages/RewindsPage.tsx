@@ -1,68 +1,40 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type Friend } from '../lib/api'
+import { api, type Friend, type RewindVideo } from '../lib/api'
+import { compileDailyRewindVideo, compileMultiRewindVideo } from '../lib/rewindCompiler'
+import wallpaper from '../assets/main_wallpaper.jpg'
+import logo from '../assets/logo.png'
 
-type FriendClip = {
+type RewindClip = {
   id: string
-  label: string
-  isYou?: boolean
+  createdAt: string
+  videoUrl: string
+  timeLabel: string
 }
 
-type DayGroup = {
+type DailyRewind = {
   id: string
+  dayKey: string
   title: string
-  clips: FriendClip[]
+  ownerId: string
+  ownerName: string
+  isYou: boolean
+  clipCount: number
+  clips: RewindClip[]
 }
 
 type MultiRewind = {
   id: string
   title: string
-  participants: string[]
+  dayKey: string
+  participants: Array<{
+    ownerId: string
+    ownerName: string
+    clips: RewindClip[]
+  }>
   createdBy: string
+  videoUrl: string | null
 }
-
-const RAW_REWINDS: DayGroup[] = [
-  {
-    id: 'yesterday',
-    title: "Yesterday's Rewinds",
-    clips: [
-      { id: 'me-yesterday', label: 'Me', isYou: true },
-      { id: 'coco-yesterday', label: 'Coco' },
-      { id: 'will-yesterday', label: 'Will' },
-      { id: 'ju-yesterday', label: 'Ju' },
-      { id: 'sam-yesterday', label: 'Sam' },
-    ],
-  },
-  {
-    id: 'may-22',
-    title: "May 22th's Rewinds",
-    clips: [
-      { id: 'me-may-22', label: 'Me', isYou: true },
-      { id: 'ju-may-22', label: 'Ju' },
-      { id: 'tina-may-22', label: 'Tina' },
-    ],
-  },
-  {
-    id: 'may-20',
-    title: "May 20th's Rewinds",
-    clips: [{ id: 'coco-may-20', label: 'Coco' }],
-  },
-]
-
-const INITIAL_MULTI_REWINDS: MultiRewind[] = [
-  {
-    id: 'friend-crew-yesterday',
-    title: "Yesterday's Rewinds",
-    participants: ['Me', 'Coco', 'William', 'Layla'],
-    createdBy: 'Coco',
-  },
-  {
-    id: 'friend-ju-tina',
-    title: "May 22th's Rewinds",
-    participants: ['Ju', 'Tina'],
-    createdBy: 'Ju',
-  },
-]
 
 export function RewindsPage() {
   const [activeTab, setActiveTab] = useState<'rewinds' | 'multi'>('rewinds')
@@ -70,14 +42,52 @@ export function RewindsPage() {
   const [friendQuery, setFriendQuery] = useState('')
   const [friends, setFriends] = useState<Friend[]>([])
   const [friendResults, setFriendResults] = useState<Friend[]>([])
+  const [rewindFeed, setRewindFeed] = useState<RewindVideo[]>([])
   const [friendsLoading, setFriendsLoading] = useState(true)
+  const [rewindsLoading, setRewindsLoading] = useState(true)
   const [friendSearchLoading, setFriendSearchLoading] = useState(false)
   const [friendActionLoadingId, setFriendActionLoadingId] = useState<string | null>(null)
   const [friendError, setFriendError] = useState<string | null>(null)
+  const [rewindsError, setRewindsError] = useState<string | null>(null)
+  const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>([])
+  const [activeRewind, setActiveRewind] = useState<DailyRewind | null>(null)
+  const [compiledRewindUrls, setCompiledRewindUrls] = useState<Record<string, string>>({})
   const [isComposerOpen, setIsComposerOpen] = useState(false)
-  const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
-  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([])
-  const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>(INITIAL_MULTI_REWINDS)
+  const [selectedMultiFriendIds, setSelectedMultiFriendIds] = useState<string[]>([])
+  const [composerError, setComposerError] = useState<string | null>(null)
+  const [activeMultiRewindId, setActiveMultiRewindId] = useState<string | null>(null)
+  const [rewindRenderError, setRewindRenderError] = useState<string | null>(null)
+  const [renderingRewindId, setRenderingRewindId] = useState<string | null>(null)
+  const [multiRenderError, setMultiRenderError] = useState<string | null>(null)
+  const [renderingMultiId, setRenderingMultiId] = useState<string | null>(null)
+  const generatedUrlsRef = useRef<string[]>([])
+
+  useEffect(() => {
+    return () => {
+      for (const url of generatedUrlsRef.current) {
+        URL.revokeObjectURL(url)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    async function loadRewindFeed() {
+      setRewindsLoading(true)
+      setRewindsError(null)
+
+      try {
+        const feed = await api.getRewindFeed()
+        setRewindFeed(feed)
+      } catch (error) {
+        console.error(error)
+        setRewindsError('Could not load rewinds yet.')
+      } finally {
+        setRewindsLoading(false)
+      }
+    }
+
+    void loadRewindFeed()
+  }, [])
 
   useEffect(() => {
     async function loadFriends() {
@@ -98,101 +108,119 @@ export function RewindsPage() {
     void loadFriends()
   }, [])
 
-  const eligibleDays = useMemo(
-    () => RAW_REWINDS.filter((group) => group.clips.some((clip) => clip.isYou)),
-    [],
+  const dailyRewinds = useMemo<DailyRewind[]>(() => {
+    const groups = new Map<string, DailyRewind>()
+
+    for (const clip of rewindFeed) {
+      const createdAt = new Date(clip.createdAt)
+      const dayKey = createdAt.toISOString().slice(0, 10)
+      const rewindKey = `${clip.userId}:${dayKey}`
+      const dayTitle = createdAt.toLocaleDateString(undefined, {
+        month: 'long',
+        day: 'numeric',
+      })
+
+      if (!groups.has(rewindKey)) {
+        groups.set(rewindKey, {
+          id: rewindKey,
+          dayKey,
+          title: `${clip.username}'s ${dayTitle} Rewind`,
+          ownerId: clip.userId,
+          ownerName: clip.isYou ? 'You' : clip.username,
+          isYou: clip.isYou,
+          clipCount: 0,
+          clips: [],
+        })
+      }
+
+      const rewind = groups.get(rewindKey)!
+      rewind.clips.push({
+        id: clip.id,
+        createdAt: clip.createdAt,
+        videoUrl: clip.videoUrl,
+        timeLabel: createdAt.toLocaleTimeString([], {
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+      })
+    }
+
+    return Array.from(groups.values())
+      .map((rewind) => ({
+        ...rewind,
+        clipCount: rewind.clips.length,
+        clips: [...rewind.clips].sort(
+          (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+        ),
+      }))
+      .sort(
+        (left, right) =>
+          new Date(right.clips[right.clips.length - 1]?.createdAt ?? 0).getTime() -
+          new Date(left.clips[left.clips.length - 1]?.createdAt ?? 0).getTime(),
+      )
+  }, [rewindFeed])
+
+  const ownRewinds = useMemo(
+    () => dailyRewinds.filter((rewind) => rewind.isYou),
+    [dailyRewinds],
   )
 
-  const selectedDay =
-    eligibleDays.find((group) => group.id === selectedDayId) ??
-    (eligibleDays.length > 0 ? eligibleDays[0] : null)
-
-  const filteredRawRewinds = useMemo(() => {
+  const filteredRewinds = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase()
-
     if (!normalized) {
-      return RAW_REWINDS
+      return dailyRewinds
     }
 
-    return RAW_REWINDS.map((group) => ({
-      ...group,
-      clips: group.clips.filter((clip) => clip.label.toLowerCase().includes(normalized)),
-    })).filter((group) => group.clips.length > 0)
-  }, [searchTerm])
+    return dailyRewinds.filter((rewind) => rewind.ownerName.toLowerCase().includes(normalized))
+  }, [dailyRewinds, searchTerm])
 
-  const groupedMultiRewinds = useMemo(() => {
+  const filteredMultiRewinds = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase()
-    const filtered = !normalized
-      ? multiRewinds
-      : multiRewinds.filter((rewind) =>
-          rewind.participants.join(', ').toLowerCase().includes(normalized),
-        )
+    if (!normalized) {
+      return multiRewinds
+    }
 
-    return filtered.reduce<Record<string, MultiRewind[]>>((accumulator, rewind) => {
-      accumulator[rewind.title] ??= []
-      accumulator[rewind.title].push(rewind)
-      return accumulator
-    }, {})
+    return multiRewinds.filter((rewind) =>
+      `${rewind.participants.map((participant) => participant.ownerName).join(' ')} ${rewind.title}`
+        .toLowerCase()
+        .includes(normalized),
+    )
   }, [multiRewinds, searchTerm])
 
-  const openComposer = () => {
-    const defaultDay = eligibleDays[0] ?? null
-    setSelectedDayId(defaultDay?.id ?? null)
-    setSelectedFriendIds([])
-    setIsComposerOpen(true)
-    setActiveTab('rewinds')
-  }
+  const activeMultiRewind = useMemo(
+    () => multiRewinds.find((rewind) => rewind.id === activeMultiRewindId) ?? null,
+    [multiRewinds, activeMultiRewindId],
+  )
 
-  const closeComposer = () => {
-    setIsComposerOpen(false)
-    setSelectedFriendIds([])
-  }
+  const openRewind = async (rewind: DailyRewind) => {
+    setRewindRenderError(null)
+    setActiveRewind(rewind)
 
-  const handleDayChange = (dayId: string) => {
-    setSelectedDayId(dayId)
-    setSelectedFriendIds([])
-  }
-
-  const toggleFriendSelection = (friendId: string, isYou?: boolean) => {
-    if (isYou) {
+    if (compiledRewindUrls[rewind.id] || renderingRewindId === rewind.id) {
       return
     }
 
-    setSelectedFriendIds((previous) =>
-      previous.includes(friendId)
-        ? previous.filter((existingId) => existingId !== friendId)
-        : [...previous, friendId],
-    )
+    setRenderingRewindId(rewind.id)
+
+    try {
+      const videoUrl = await compileDailyRewindVideo(rewind.clips)
+      generatedUrlsRef.current.push(videoUrl)
+      setCompiledRewindUrls((previous) => ({
+        ...previous,
+        [rewind.id]: videoUrl,
+      }))
+    } catch (error) {
+      console.error(error)
+      setRewindRenderError('Could not compile this rewind on this device.')
+    } finally {
+      setRenderingRewindId(null)
+    }
   }
 
-  const handleCreateMultiRewind = () => {
-    if (!selectedDay) {
-      return
-    }
-
-    const participantLabels = selectedDay.clips
-      .filter((clip) => clip.isYou || selectedFriendIds.includes(clip.id))
-      .map((clip) => clip.label)
-
-    if (participantLabels.length < 2) {
-      return
-    }
-
-    const createdRewind: MultiRewind = {
-      id: `created-${selectedDay.id}-${selectedFriendIds.join('-')}`,
-      title: selectedDay.title,
-      participants: participantLabels,
-      createdBy: 'You',
-    }
-
-    setMultiRewinds((previous) => [createdRewind, ...previous])
-    setActiveTab('multi')
-    closeComposer()
+  const closeRewind = () => {
+    setActiveRewind(null)
+    setRewindRenderError(null)
   }
-
-  const canCreateMultiRewind = selectedDay
-    ? selectedDay.clips.filter((clip) => clip.isYou || selectedFriendIds.includes(clip.id)).length >= 2
-    : false
 
   const handleFriendSearch = async () => {
     const query = friendQuery.trim()
@@ -243,6 +271,12 @@ export function RewindsPage() {
     try {
       await api.removeFriend(friend.id)
       setFriends((previous) => previous.filter((existingFriend) => existingFriend.id !== friend.id))
+      setRewindFeed((previous) => previous.filter((clip) => clip.userId !== friend.id))
+      setMultiRewinds((previous) =>
+        previous.filter(
+          (rewind) => !rewind.participants.some((participant) => participant.ownerId === friend.id),
+        ),
+      )
     } catch (error) {
       console.error(error)
       setFriendError(`Could not remove ${friend.username}.`)
@@ -253,9 +287,147 @@ export function RewindsPage() {
 
   const isAlreadyFriend = (friendId: string) => friends.some((friend) => friend.id === friendId)
 
+  const openComposer = () => {
+    setSelectedMultiFriendIds([])
+    setComposerError(null)
+    setIsComposerOpen(true)
+  }
+
+  const closeComposer = () => {
+    setIsComposerOpen(false)
+    setSelectedMultiFriendIds([])
+    setComposerError(null)
+  }
+
+  const toggleMultiFriend = (friendId: string) => {
+    setSelectedMultiFriendIds((previous) => {
+      if (previous.includes(friendId)) {
+        return previous.filter((existingId) => existingId !== friendId)
+      }
+
+      if (previous.length >= 5) {
+        return previous
+      }
+
+      return [...previous, friendId]
+    })
+  }
+
+  const handleCreateMultiRewind = () => {
+    if (selectedMultiFriendIds.length === 0) {
+      setComposerError('Pick at least one friend to create a Multi-Rewind.')
+      return
+    }
+
+    const selectedFriends = friends.filter((friend) => selectedMultiFriendIds.includes(friend.id))
+    if (selectedFriends.length === 0) {
+      setComposerError('Selected friends were not found.')
+      return
+    }
+
+    const selectedRewinds = selectedFriends
+      .map((friend) => ({
+        friend,
+        rewinds: dailyRewinds.filter((rewind) => rewind.ownerId === friend.id),
+      }))
+      .filter((entry) => entry.rewinds.length > 0)
+
+    if (selectedRewinds.length !== selectedFriends.length) {
+      setComposerError('One or more selected friends do not have any rewinds yet.')
+      return
+    }
+
+    const latestSharedDay = ownRewinds.find((ownRewind) =>
+      selectedRewinds.every((entry) =>
+        entry.rewinds.some((friendRewind) => friendRewind.dayKey === ownRewind.dayKey),
+      ),
+    )
+
+    if (!latestSharedDay) {
+      setComposerError('You and the selected friends do not share a rewind day yet.')
+      return
+    }
+
+    const participantRewinds = [
+      {
+        ownerId: latestSharedDay.ownerId,
+        ownerName: latestSharedDay.ownerName,
+        clips: latestSharedDay.clips,
+      },
+      ...selectedRewinds.map((entry) => {
+        const matchingRewind = entry.rewinds.find(
+          (friendRewind) => friendRewind.dayKey === latestSharedDay.dayKey,
+        )
+
+        return {
+          ownerId: entry.friend.id,
+          ownerName: entry.friend.username,
+          clips: matchingRewind?.clips ?? [],
+        }
+      }),
+    ]
+
+    const createdRewind: MultiRewind = {
+      id: `multi-${Date.now()}`,
+      title: latestSharedDay.title.replace('Rewind', 'Multi-Rewind'),
+      dayKey: latestSharedDay.dayKey,
+      participants: participantRewinds,
+      createdBy: 'You',
+      videoUrl: null,
+    }
+
+    setMultiRewinds((previous) => [createdRewind, ...previous])
+    setActiveTab('multi')
+    closeComposer()
+  }
+
+  const openMultiRewind = async (rewind: MultiRewind) => {
+    setMultiRenderError(null)
+    setActiveMultiRewindId(rewind.id)
+
+    if (rewind.videoUrl || renderingMultiId === rewind.id) {
+      return
+    }
+
+    setRenderingMultiId(rewind.id)
+
+    try {
+      const videoUrl = await compileMultiRewindVideo(rewind.participants)
+      generatedUrlsRef.current.push(videoUrl)
+      setMultiRewinds((previous) =>
+        previous.map((existingRewind) =>
+          existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
+        ),
+      )
+    } catch (error) {
+      console.error(error)
+      setMultiRenderError('Could not compile the Multi-Rewind on this device.')
+    } finally {
+      setRenderingMultiId(null)
+    }
+  }
+
+  const closeMultiRewind = () => {
+    setActiveMultiRewindId(null)
+    setMultiRenderError(null)
+  }
+
   return (
     <>
-      <section className="rewinds-screen">
+      <main
+        className="rewinds-shell"
+        style={{
+          backgroundImage: `url(${wallpaper})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="profile-hero profile-hero--small">
+          <img src={logo} alt="Be For Real" className="home-logo home-logo--small" />
+        </div>
+
+        <section className="rewinds-screen">
         <header className="rewinds-topbar">
           <h1>My profile</h1>
 
@@ -278,6 +450,7 @@ export function RewindsPage() {
             <h2>Alex_Phung</h2>
             <p>Eneko corp enthusiast and big gamer</p>
             <p>{friends.length} friend{friends.length === 1 ? '' : 's'} connected</p>
+            <p>{ownRewinds.length} personal rewinds</p>
           </div>
         </section>
 
@@ -381,7 +554,7 @@ export function RewindsPage() {
           <label className="rewinds-search">
             <span>Search Friend :</span>
             <input
-              placeholder="Search by friend name"
+              placeholder={activeTab === 'rewinds' ? 'Search by rewind owner' : 'Search by participant'}
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
@@ -390,66 +563,187 @@ export function RewindsPage() {
 
           {activeTab === 'rewinds' ? (
             <div className="rewinds-groups">
-              {filteredRawRewinds.map((group) => (
-                <section key={group.id} className="rewinds-group">
+              {rewindsError ? <p className="friends-panel__message">{rewindsError}</p> : null}
+              {rewindsLoading ? <p className="friends-panel__message">Loading rewinds...</p> : null}
+              {!rewindsLoading && filteredRewinds.length === 0 ? (
+                <p className="friends-panel__message">No rewinds yet. Record clips throughout the day first.</p>
+              ) : null}
+              {filteredRewinds.map((rewind) => (
+                <section key={rewind.id} className="rewinds-group">
                   <div className="rewinds-group__heading">
-                    <h3>{group.title}</h3>
+                    <h3>{rewind.title}</h3>
                     <span />
                   </div>
 
-                  <div className="rewinds-card">
-                    <div className="rewinds-card__grid">
-                      {group.clips.map((clip) => (
-                        <article key={clip.id} className="rewind-tile">
-                          <div className="rewind-tile__thumb" />
-                          <p>{clip.label}</p>
-                        </article>
-                      ))}
+                  <button className="rewinds-card rewinds-card--button" type="button" onClick={() => void openRewind(rewind)}>
+                    <div className="rewinds-card__summary">
+                      <video
+                        className="rewinds-card__preview"
+                        muted
+                        playsInline
+                        preload="metadata"
+                        src={rewind.clips[0]?.videoUrl}
+                      />
+                      <div className="rewinds-card__copy">
+                        <strong>{rewind.isYou ? 'Your rewind' : `${rewind.ownerName}'s rewind`}</strong>
+                        <span>{rewind.clipCount} clips compiled in order</span>
+                        <span>Times: {rewind.clips.map((clip) => clip.timeLabel).join(' · ')}</span>
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 </section>
               ))}
             </div>
           ) : (
             <div className="rewinds-groups">
-              {Object.entries(groupedMultiRewinds).map(([title, rewinds]) => (
-                <section key={title} className="rewinds-group">
+              {filteredMultiRewinds.length === 0 ? (
+                <p className="friends-panel__message">No Multi-Rewinds yet. Create one from the MIX button.</p>
+              ) : null}
+              {filteredMultiRewinds.map((rewind) => (
+                <section key={rewind.id} className="rewinds-group">
                   <div className="rewinds-group__heading">
-                    <h3>{title}</h3>
+                    <h3>{rewind.title}</h3>
                     <span />
                   </div>
 
-                  <div className="rewinds-card">
-                    <div className="rewinds-card__grid">
-                      {rewinds.map((rewind) => (
-                        <article key={rewind.id} className="rewind-tile rewind-tile--multi">
-                          <div className="rewind-tile__thumb rewind-tile__thumb--wide" />
-                          <p>{rewind.participants.join(', ')}</p>
-                          <span className="rewind-tile__meta">Created by {rewind.createdBy}</span>
-                        </article>
-                      ))}
+                  <button className="rewinds-card rewinds-card--button" type="button" onClick={() => void openMultiRewind(rewind)}>
+                    <div className="rewinds-card__summary">
+                      <div
+                        className={`rewinds-card__stack rewinds-card__stack--${Math.min(rewind.participants.length, 6)}`}
+                      >
+                        {rewind.participants.map((participant) => (
+                          <video
+                            key={participant.ownerId}
+                            className="rewinds-card__stack-video"
+                            muted
+                            playsInline
+                            preload="metadata"
+                            src={participant.clips[0]?.videoUrl}
+                          />
+                        ))}
+                      </div>
+                      <div className="rewinds-card__copy">
+                        <strong>{rewind.participants.map((participant) => participant.ownerName).join(' + ')}</strong>
+                        <span>
+                          {Math.min(...rewind.participants.map((participant) => participant.clips.length))} synchronized segments
+                        </span>
+                        <span>Rendered as one equal-panel Multi-Rewind</span>
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 </section>
               ))}
             </div>
           )}
         </section>
 
+        </section>
+
         <aside className="rewinds-fab">
           <div className="rewinds-fab__bubble" />
           <Link className="rewinds-action rewinds-action--lime" to="/camera">
             <span className="rewinds-action__icon">REC</span>
-            <span>Record today&apos;s rewind</span>
+            <span>Record today&apos;s clip</span>
           </Link>
           <button className="rewinds-action rewinds-action--cyan" type="button" onClick={openComposer}>
             <span className="rewinds-action__icon">MIX</span>
-            <span>Make Multi-Rewinds</span>
+            <span>Make Multi-Rewind</span>
           </button>
         </aside>
-      </section>
+      </main>
+      {activeRewind ? (
+        <div className="composer-overlay" role="dialog" aria-modal="true" aria-labelledby="rewind-player-title">
+          <div className="rewind-player">
+            <div className="rewind-player__header">
+              <div>
+                <h2 id="rewind-player-title">{activeRewind.title}</h2>
+                <p>{activeRewind.clips.length} clips merged into one rewind</p>
+              </div>
+              <button className="composer-close" type="button" onClick={closeRewind}>
+                X
+              </button>
+            </div>
 
-      {isComposerOpen && selectedDay ? (
+            {rewindRenderError ? <p className="friends-panel__message">{rewindRenderError}</p> : null}
+
+            {compiledRewindUrls[activeRewind.id] ? (
+              <div className="rewind-player__stage">
+                <video
+                  autoPlay
+                  className="rewind-player__video"
+                  controls
+                  playsInline
+                  src={compiledRewindUrls[activeRewind.id]}
+                />
+              </div>
+            ) : (
+              <div className="rewind-player__loading">
+                {renderingRewindId === activeRewind.id
+                  ? 'Compiling your rewind...'
+                  : 'Preparing rewind...'}
+              </div>
+            )}
+
+            <div className="composer-actions">
+              <button className="composer-button composer-button--ghost" type="button" onClick={closeRewind}>
+                Close
+              </button>
+              <div className="rewind-player__status">
+                Merged in chronological order for one continuous playback
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {activeMultiRewind ? (
+        <div className="composer-overlay" role="dialog" aria-modal="true" aria-labelledby="multi-rewind-title">
+          <div className="rewind-player">
+            <div className="rewind-player__header">
+              <div>
+                <h2 id="multi-rewind-title">{activeMultiRewind.title}</h2>
+                <p>
+                  {activeMultiRewind.participants.length} equal panels, auto-advancing together
+                </p>
+              </div>
+              <button className="composer-close" type="button" onClick={closeMultiRewind}>
+                X
+              </button>
+            </div>
+
+            {multiRenderError ? <p className="friends-panel__message">{multiRenderError}</p> : null}
+
+            {activeMultiRewind.videoUrl ? (
+              <div className="rewind-player__stage">
+                <video
+                  autoPlay
+                  className="rewind-player__video"
+                  controls
+                  playsInline
+                  src={activeMultiRewind.videoUrl}
+                />
+              </div>
+            ) : (
+              <div className="rewind-player__loading">
+                {renderingMultiId === activeMultiRewind.id
+                  ? 'Compiling split-screen rewind...'
+                  : 'Preparing Multi-Rewind...'}
+              </div>
+            )}
+
+            <div className="composer-actions">
+              <button className="composer-button composer-button--ghost" type="button" onClick={closeMultiRewind}>
+                Close
+              </button>
+              <div className="rewind-player__status">
+                All panels advance together when the shortest current clip ends
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isComposerOpen ? (
         <div className="composer-overlay" role="dialog" aria-modal="true" aria-labelledby="composer-title">
           <div className="composer-modal">
             <div className="composer-modal__header">
@@ -460,51 +754,41 @@ export function RewindsPage() {
             </div>
 
             <div className="composer-step">
-              <h3>1. Choose a day</h3>
-              <p>Only days where you recorded are available.</p>
-              <div className="composer-day-list">
-                {eligibleDays.map((group) => (
-                  <button
-                    key={group.id}
-                    className={`composer-day ${selectedDay.id === group.id ? 'composer-day--active' : ''}`}
-                    type="button"
-                    onClick={() => handleDayChange(group.id)}
-                  >
-                    {group.title}
-                  </button>
-                ))}
+              <h3>Pick up to 5 friends</h3>
+              <p>The result is a Multi-Rewind with equal-size panels for everyone, including you.</p>
+              <div className="composer-friend-list">
+                {friends.length === 0 ? (
+                  <p className="friends-panel__message">Add friends first to create a Multi-Rewind.</p>
+                ) : (
+                  friends.map((friend) => (
+                    <label key={friend.id} className="composer-friend">
+                      <input
+                        checked={selectedMultiFriendIds.includes(friend.id)}
+                        disabled={
+                          !selectedMultiFriendIds.includes(friend.id) &&
+                          selectedMultiFriendIds.length >= 5
+                        }
+                        type="checkbox"
+                        onChange={() => toggleMultiFriend(friend.id)}
+                      />
+                      <span>{friend.username}</span>
+                      <em>{friend.email}</em>
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 
-            <div className="composer-step">
-              <h3>2. Select friends from that day</h3>
-              <p>You are always included. Pick the friends you want in the mashup.</p>
-              <div className="composer-friend-list">
-                {selectedDay.clips.map((clip) => (
-                  <label
-                    key={clip.id}
-                    className={`composer-friend ${clip.isYou ? 'composer-friend--locked' : ''}`}
-                  >
-                    <input
-                      checked={clip.isYou || selectedFriendIds.includes(clip.id)}
-                      disabled={clip.isYou}
-                      type="checkbox"
-                      onChange={() => toggleFriendSelection(clip.id, clip.isYou)}
-                    />
-                    <span>{clip.label}</span>
-                    {clip.isYou ? <em>You must be included</em> : null}
-                  </label>
-                ))}
-              </div>
-            </div>
+            {composerError ? <p className="friends-panel__message">{composerError}</p> : null}
 
             <div className="composer-summary">
               <strong>Preview:</strong>
               <span>
-                {selectedDay.clips
-                  .filter((clip) => clip.isYou || selectedFriendIds.includes(clip.id))
-                  .map((clip) => clip.label)
-                  .join(', ')}
+                {selectedMultiFriendIds.length > 0
+                  ? ['You', ...friends
+                      .filter((friend) => selectedMultiFriendIds.includes(friend.id))
+                      .map((friend) => friend.username)].join(', ')
+                  : 'Choose up to 5 friends to continue'}
               </span>
             </div>
 
@@ -514,11 +798,11 @@ export function RewindsPage() {
               </button>
               <button
                 className="composer-button composer-button--primary"
-                disabled={!canCreateMultiRewind}
+                disabled={selectedMultiFriendIds.length === 0}
                 type="button"
                 onClick={handleCreateMultiRewind}
               >
-                Confirm Multi-Rewind
+                Create Multi-Rewind
               </button>
             </div>
           </div>

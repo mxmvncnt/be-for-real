@@ -1,5 +1,7 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import auth from './routes/auth.js'
 import user from './routes/user.js'
 import videos from './routes/videos.js'
@@ -9,6 +11,29 @@ const app = new Hono()
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
+})
+
+app.get('/uploads/:filename', async (c) => {
+  const filename = c.req.param('filename')
+  const absolutePath = path.resolve(process.cwd(), 'uploads', filename)
+
+  try {
+    const fileBuffer = await readFile(absolutePath)
+    const extension = path.extname(filename).toLowerCase()
+    const contentType =
+      extension === '.mp4'
+        ? 'video/mp4'
+        : extension === '.mov'
+          ? 'video/quicktime'
+          : 'video/webm'
+
+    return c.body(fileBuffer, 200, {
+      'Content-Type': contentType,
+      'Cache-Control': 'no-store',
+    })
+  } catch {
+    return c.json({ error: 'File not found' }, 404)
+  }
 })
 
 app.route('/auth', auth)
