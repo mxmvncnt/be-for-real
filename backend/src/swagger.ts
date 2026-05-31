@@ -163,6 +163,33 @@ const openApiDoc = {
         },
       },
     },
+    "/user/description": {
+      patch: {
+        summary: "Update the authenticated user's description",
+        tags: ["Users"],
+        security: [{ TokenAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  description: { type: "string" },
+                },
+                required: ["description"],
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Description updated" },
+          "400": { description: "Missing or invalid description" },
+          "401": { description: "Missing or invalid token" },
+          "404": { description: "User not found" },
+        },
+      },
+    },
     "/videos/clips": {
       get: {
         summary: "Get all clips from friends",
