@@ -5,7 +5,7 @@ import {
   compileDailyRewindVideo,
   compileMultiRewindVideo,
 } from "../lib/rewindCompiler";
-import wallpaper from "../assets/main_wallpaper.jpg";
+import wallpaper from "../assets/background_rewind.png";
 
 type RewindClip = {
   id: string;
