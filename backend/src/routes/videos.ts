@@ -201,7 +201,7 @@ videos.get('/mashup/:date', async (c) => {
 		const filePaths = sorted.map(
 			(video) => `file ${join(uploadsDir, video.filename).replaceAll('\\', '/')}`,
 		)
-		const listPath = join(tmpdir(), `${hash}.txt`)
+		const listPath = join(tmpdir(), `${hash}.txt`).replaceAll('\\', '/')
 		const manifest = filePaths.join('\n')
 		await writeFile(listPath, manifest, 'utf8')
 		await concatVideos(listPath, outputFile)
