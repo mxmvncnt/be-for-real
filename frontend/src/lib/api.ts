@@ -155,11 +155,11 @@ export const api = {
 
     return response.json() as Promise<RewindVideo>;
   },
-  generateMashup: async (dateIsoString: string) => {
+  generateMashup: async (dateIsoString: string, userId: string) => {
     const date =
       DateTime.fromISO(dateIsoString).startOf("day").toISO() ?? dateIsoString;
     const response = await fetch(
-      `${API_BASE_URL}/videos/mashup/${encodeURIComponent(date)}`,
+      `${API_BASE_URL}/videos/mashup/${encodeURIComponent(date)}/${encodeURIComponent(userId)}`,
       {
         method: "GET",
         headers: getAuthHeaders(),

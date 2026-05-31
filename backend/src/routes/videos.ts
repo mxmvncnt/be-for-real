@@ -10,6 +10,7 @@ import { concatVideos } from '../utils/ffmpeg.js'
 import { tmpdir } from 'node:os'
 import { existsSync } from 'node:fs'
 import { songs } from '../data/songs.js'
+import areUsersFriends from '../utils/friends.js'
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
@@ -149,10 +150,16 @@ videos.get('/feed', async (c) => {
 	return c.json(feed, 200)
 })
 
-videos.get('/mashup/:date', async (c) => {
-	const userId = await getUserIdFromRequest(c)
-	if (!userId) {
+videos.get('/mashup/:date/:userId', async (c) => {
+	const userId = String(c.req.param('userId'))
+
+	const currentUserId = await getUserIdFromRequest(c)
+	if (!currentUserId) {
 		return c.json({ error: 'Invalid or expired token' }, 401)
+	}
+
+	if (!(await areUsersFriends(currentUserId, userId))) {
+		return c.json({ error: 'you are not friend with this user' }, 401)
 	}
 
 	const dateParam = String(c.req.param('date'))
