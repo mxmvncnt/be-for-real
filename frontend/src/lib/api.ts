@@ -28,6 +28,14 @@ export type Friend = {
   profilePicUrl?: string | null
 }
 
+export type CurrentUser = {
+  id: string
+  username: string
+  email: string
+  description?: string | null
+  profilePicUrl?: string | null
+}
+
 export type RewindVideo = {
   id: string
   userId: string
@@ -79,6 +87,10 @@ export const api = {
     }),
   getFriends: () =>
     request<Friend[]>('/user/friends', {
+      headers: getAuthHeaders(),
+    }),
+  getCurrentUser: () =>
+    request<CurrentUser>('/user/me', {
       headers: getAuthHeaders(),
     }),
   searchUsers: (query: string) =>

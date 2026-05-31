@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type Friend, type RewindVideo } from "../lib/api";
+import { api, type CurrentUser, type Friend, type RewindVideo } from "../lib/api";
 import {
   compileDailyRewindVideo,
   compileMultiRewindVideo,
@@ -45,6 +45,7 @@ export function RewindsPage() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendResults, setFriendResults] = useState<Friend[]>([]);
   const [rewindFeed, setRewindFeed] = useState<RewindVideo[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [rewindsLoading, setRewindsLoading] = useState(true);
   const [friendSearchLoading, setFriendSearchLoading] = useState(false);
@@ -101,6 +102,19 @@ export function RewindsPage() {
     }
 
     void loadRewindFeed();
+  }, []);
+
+  useEffect(() => {
+    async function loadCurrentUser() {
+      try {
+        const user = await api.getCurrentUser();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    void loadCurrentUser();
   }, []);
 
   useEffect(() => {
@@ -213,6 +227,10 @@ export function RewindsPage() {
     [multiRewinds, activeMultiRewindId],
   )
   const isTransitionLoading = Boolean(renderingRewindId || renderingMultiId)
+  const profileName =
+    currentUser?.username ?? window.localStorage.getItem("bfr.username") ?? "User";
+  const profileDescription =
+    currentUser?.description?.trim() || "Record daily clips and build your rewind.";
 
   const openRewind = async (rewind: DailyRewind) => {
     setRewindRenderError(null);
@@ -502,8 +520,8 @@ export function RewindsPage() {
             </div>
 
             <div className="profile-banner__meta">
-              <h2>Alex_Phung</h2>
-              <p>Eneko corp enthusiast and big gamer</p>
+              <h2>{profileName}</h2>
+              <p>{profileDescription}</p>
               <p>
                 {friends.length} friend{friends.length === 1 ? "" : "s"}{" "}
                 connected
