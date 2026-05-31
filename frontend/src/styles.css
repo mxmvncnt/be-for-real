@@ -480,7 +480,7 @@ input {
   width: min(100%, 335px);
   margin-top: 8px;
   border: 2px solid rgba(255, 255, 255, 0.82);
-  border-radius: 0 8px 12px 12px;
+  border-radius: 12px;
   background:
     radial-gradient(
       circle at 60% 10%,
@@ -496,6 +496,7 @@ input {
     transform 320ms ease,
     opacity 320ms ease;
   transform-origin: top center;
+  overflow: hidden;
   opacity: 0;
   transform: translateY(-12px) scale(0.96);
   animation: panel-appear 320ms ease forwards;
