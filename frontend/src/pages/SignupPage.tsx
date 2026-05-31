@@ -1,30 +1,17 @@
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { PageTransitionOverlay } from "../components/PageTransitionOverlay";
 import wallpaper from "../assets/main_wallpaper.jpg";
 import logo from "/logo.png";
 
-const TRANSITION_DURATION = 680;
-
 export function SignupPage() {
   const navigate = useNavigate();
-  const timeoutRef = useRef<number | null>(null);
-  const [transitioning, setTransitioning] = useState(false);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,7 +30,7 @@ export function SignupPage() {
       window.localStorage.setItem("bfr.token", token);
       window.localStorage.setItem("bfr.email", email);
       window.localStorage.setItem("bfr.username", username);
-      navigate("/camera");
+      navigate("/rewinds");
     } catch (requestError) {
       console.error(requestError);
       setError("Signup failed. Try a different email or username.");
@@ -54,15 +41,7 @@ export function SignupPage() {
 
   const goToLogin = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    if (transitioning) {
-      return;
-    }
-
-    setTransitioning(true);
-    timeoutRef.current = window.setTimeout(
-      () => navigate("/"),
-      TRANSITION_DURATION,
-    );
+    navigate("/");
   };
 
   return (
@@ -76,8 +55,6 @@ export function SignupPage() {
         minHeight: "100vh",
       }}
     >
-      <PageTransitionOverlay active={transitioning} />
-
       <div className="profile-hero profile-hero--small">
         <img
           src={logo}
