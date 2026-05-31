@@ -33,6 +33,7 @@ export function RewindsPage() {
   const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>([])
   const [activeRewind, setActiveRewind] = useState<DailyRewind | null>(null)
   const [compiledRewindUrls, setCompiledRewindUrls] = useState<Record<string, string>>({})
+  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [selectedComposerDayId, setSelectedComposerDayId] = useState<string | null>(null)
   const [selectedMultiFriendIds, setSelectedMultiFriendIds] = useState<string[]>([])
@@ -125,8 +126,6 @@ export function RewindsPage() {
   )
   const isTransitionLoading = Boolean(renderingRewindId || renderingMultiId)
   const profileName = currentUser?.username ?? window.localStorage.getItem('bfr.username') ?? 'User'
-  const profileDescription =
-    currentUser?.description?.trim() || 'Record daily clips and build your rewind.'
 
   const openRewind = async (rewind: DailyRewind) => {
     setRewindRenderError(null)
@@ -352,31 +351,18 @@ export function RewindsPage() {
         }}
       >
         <section className="rewinds-screen">
-          <RewindsHeader />
+          <section className="rewinds-profile-panel">
+            <RewindsHeader />
 
-          <ProfileBanner
-            profileName={profileName}
-            profileDescription={profileDescription}
-            friendCount={friends.length}
-            ownRewindCount={ownRewinds.length}
-          />
+            <ProfileBanner
+              profileName={profileName}
+              friendCount={friends.length}
+              ownRewindCount={ownRewinds.length}
+              onOpenFriends={() => setIsFriendsModalOpen(true)}
+            />
+          </section>
 
           <section className="rewinds-panel">
-            <FriendsPanel
-              friendActionLoadingId={friendActionLoadingId}
-              friendError={friendError}
-              friendQuery={friendQuery}
-              friendResults={friendResults}
-              friendSearchLoading={friendSearchLoading}
-              friends={friends}
-              friendsLoading={friendsLoading}
-              isAlreadyFriend={isAlreadyFriend}
-              onAddFriend={handleAddFriend}
-              onFriendQueryChange={setFriendQuery}
-              onFriendSearch={() => void handleFriendSearch()}
-              onRemoveFriend={handleRemoveFriend}
-            />
-
             <RewindsFilterBar
               activeTab={activeTab}
               searchTerm={searchTerm}
@@ -422,6 +408,52 @@ export function RewindsPage() {
           renderError={multiRenderError}
           onClose={closeMultiRewind}
         />
+      ) : null}
+
+      {isFriendsModalOpen ? (
+        <div
+          className="composer-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="friends-modal-title"
+        >
+          <div className="friends-modal">
+            <div className="friends-modal__titlebar">
+              <h2 id="friends-modal-title">Friends</h2>
+              <div className="window-actions">
+                <span className="window-actions__button" aria-hidden="true">
+                  -
+                </span>
+                <span className="window-actions__button" aria-hidden="true">
+                  □
+                </span>
+                <button
+                  aria-label="Close friends"
+                  className="window-actions__button window-actions__button--close friends-modal__close"
+                  type="button"
+                  onClick={() => setIsFriendsModalOpen(false)}
+                >
+                  X
+                </button>
+              </div>
+            </div>
+
+            <FriendsPanel
+              friendActionLoadingId={friendActionLoadingId}
+              friendError={friendError}
+              friendQuery={friendQuery}
+              friendResults={friendResults}
+              friendSearchLoading={friendSearchLoading}
+              friends={friends}
+              friendsLoading={friendsLoading}
+              isAlreadyFriend={isAlreadyFriend}
+              onAddFriend={handleAddFriend}
+              onFriendQueryChange={setFriendQuery}
+              onFriendSearch={() => void handleFriendSearch()}
+              onRemoveFriend={handleRemoveFriend}
+            />
+          </div>
+        </div>
       ) : null}
 
       {isComposerOpen ? (
