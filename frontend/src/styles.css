@@ -1150,14 +1150,34 @@ button.window-actions__button {
   color: rgba(8, 25, 41, 0.72);
 }
 
+.friends-panel__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.friends-panel__tab {
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(189, 196, 210, 0.8), rgba(132, 142, 170, 0.9));
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.friends-panel__tab.is-active {
+  background: linear-gradient(180deg, #b8ff95, #4fd54f);
+  color: #1b4b16;
+}
+
 .friends-panel__search {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
 .friends-panel__search input,
-.friends-panel__search button,
 .friend-card button {
   border: 0;
   border-radius: 10px;
@@ -1170,7 +1190,6 @@ button.window-actions__button {
   background: linear-gradient(180deg, #ffffff, #f0f0f0);
 }
 
-.friends-panel__search button,
 .friend-card button {
   min-height: 36px;
   padding: 0 12px;
@@ -1179,7 +1198,6 @@ button.window-actions__button {
   cursor: pointer;
 }
 
-.friends-panel__search button:disabled,
 .friend-card button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -1188,6 +1206,16 @@ button.window-actions__button {
 .friends-panel__columns {
   display: grid;
   gap: 12px;
+}
+
+.friends-panel__sections {
+  display: grid;
+  gap: 12px;
+}
+
+.friends-panel__section {
+  display: grid;
+  gap: 8px;
 }
 
 .friends-panel__column {
@@ -1214,6 +1242,12 @@ button.window-actions__button {
 .friend-card div {
   display: grid;
   gap: 2px;
+}
+
+.friends-panel__actions {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 8px;
 }
 
 .rewinds-tabs {

@@ -21,10 +21,13 @@ export function RewindsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [friendQuery, setFriendQuery] = useState('')
   const [friends, setFriends] = useState<Friend[]>([])
+  const [incomingRequests, setIncomingRequests] = useState<Friend[]>([])
+  const [outgoingRequests, setOutgoingRequests] = useState<Friend[]>([])
   const [friendResults, setFriendResults] = useState<Friend[]>([])
   const [rewindFeed, setRewindFeed] = useState<RewindVideo[]>([])
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [friendsLoading, setFriendsLoading] = useState(true)
+  const [friendRequestsLoading, setFriendRequestsLoading] = useState(true)
   const [rewindsLoading, setRewindsLoading] = useState(true)
   const [friendSearchLoading, setFriendSearchLoading] = useState(false)
   const [friendActionLoadingId, setFriendActionLoadingId] = useState<string | null>(null)
@@ -85,24 +88,53 @@ export function RewindsPage() {
     void loadCurrentUser()
   }, [])
 
-  useEffect(() => {
-    async function loadFriends() {
-      setFriendsLoading(true)
-      setFriendError(null)
+  const loadFriends = async () => {
+    setFriendsLoading(true)
+    setFriendError(null)
 
-      try {
-        const nextFriends = await api.getFriends()
-        setFriends(nextFriends)
-      } catch (error) {
-        console.error(error)
-        setFriendError('Could not load your friends.')
-      } finally {
-        setFriendsLoading(false)
-      }
+    try {
+      const nextFriends = await api.getFriends()
+      setFriends(nextFriends)
+    } catch (error) {
+      console.error(error)
+      setFriendError('Could not load your friends.')
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
+
+  const loadFriendRequests = async () => {
+    setFriendRequestsLoading(true)
+    setFriendError(null)
+
+    try {
+      const [received, sent] = await Promise.all([
+        api.getFriendRequestsReceived(),
+        api.getFriendRequestsSent(),
+      ])
+      setIncomingRequests(received)
+      setOutgoingRequests(sent)
+    } catch (error) {
+      console.error(error)
+      setFriendError('Could not load friend requests.')
+    } finally {
+      setFriendRequestsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadFriends()
+    void loadFriendRequests()
+  }, [])
+
+  useEffect(() => {
+    if (!isFriendsModalOpen) {
+      return
     }
 
     void loadFriends()
-  }, [])
+    void loadFriendRequests()
+  }, [isFriendsModalOpen])
 
   const dailyRewinds = useMemo(() => buildDailyRewinds(rewindFeed), [rewindFeed])
   const ownRewinds = useMemo(() => dailyRewinds.filter((rewind) => rewind.isYou), [dailyRewinds])
@@ -157,26 +189,52 @@ export function RewindsPage() {
     setRewindRenderError(null)
   }
 
-  const handleFriendSearch = async () => {
+  useEffect(() => {
     const query = friendQuery.trim()
     if (!query) {
       setFriendResults([])
+      setFriendSearchLoading(false)
       return
     }
 
-    setFriendSearchLoading(true)
+    let ignore = false
+    const shouldShowSpinner = friendResults.length === 0
+    if (shouldShowSpinner) {
+      setFriendSearchLoading(true)
+    }
     setFriendError(null)
 
-    try {
-      const results = await api.searchUsers(query)
-      setFriendResults(results)
-    } catch (error) {
-      console.error(error)
-      setFriendError('Could not search users right now.')
-    } finally {
-      setFriendSearchLoading(false)
+    const timeoutId = window.setTimeout(() => {
+      api
+        .searchUsers(query)
+        .then((results) => {
+          if (ignore) {
+            return
+          }
+
+          const friendIds = new Set(friends.map((friend) => friend.id))
+          const filtered = results.filter((result) => !friendIds.has(result.id))
+          setFriendResults(filtered.slice(0, 5))
+        })
+        .catch((error) => {
+          if (ignore) {
+            return
+          }
+          console.error(error)
+          setFriendError('Could not search users right now.')
+        })
+        .finally(() => {
+          if (!ignore) {
+            setFriendSearchLoading(false)
+          }
+        })
+    }, 300)
+
+    return () => {
+      ignore = true
+      window.clearTimeout(timeoutId)
     }
-  }
+  }, [friendQuery, friends])
 
   const handleAddFriend = async (friend: Friend) => {
     setFriendActionLoadingId(friend.id)
@@ -184,8 +242,8 @@ export function RewindsPage() {
 
     try {
       await api.addFriend(friend.id)
-      setFriends((previous) => {
-        if (previous.some((existingFriend) => existingFriend.id === friend.id)) {
+      setOutgoingRequests((previous) => {
+        if (previous.some((existing) => existing.id === friend.id)) {
           return previous
         }
         return [...previous, friend].sort((left, right) =>
@@ -193,9 +251,34 @@ export function RewindsPage() {
         )
       })
       setFriendResults((previous) => previous.filter((result) => result.id !== friend.id))
+      await Promise.all([loadFriends(), loadFriendRequests()])
     } catch (error) {
       console.error(error)
       setFriendError(`Could not add ${friend.username}.`)
+    } finally {
+      setFriendActionLoadingId(null)
+    }
+  }
+
+  const handleAcceptFriend = async (friend: Friend) => {
+    setFriendActionLoadingId(friend.id)
+    setFriendError(null)
+
+    try {
+      await api.acceptFriendRequest(friend.id)
+      setIncomingRequests((previous) => previous.filter((request) => request.id !== friend.id))
+      setFriends((previous) => {
+        if (previous.some((existing) => existing.id === friend.id)) {
+          return previous
+        }
+        return [...previous, friend].sort((left, right) =>
+          left.username.localeCompare(right.username),
+        )
+      })
+      await Promise.all([loadFriends(), loadFriendRequests()])
+    } catch (error) {
+      console.error(error)
+      setFriendError(`Could not accept ${friend.username}.`)
     } finally {
       setFriendActionLoadingId(null)
     }
@@ -208,6 +291,8 @@ export function RewindsPage() {
     try {
       await api.removeFriend(friend.id)
       setFriends((previous) => previous.filter((existingFriend) => existingFriend.id !== friend.id))
+      setIncomingRequests((previous) => previous.filter((request) => request.id !== friend.id))
+      setOutgoingRequests((previous) => previous.filter((request) => request.id !== friend.id))
       setRewindFeed((previous) => previous.filter((clip) => clip.userId !== friend.id))
       setMultiRewinds((previous) =>
         previous.filter(
@@ -215,6 +300,7 @@ export function RewindsPage() {
             !rewind.participants.some((participant) => participant.ownerId === friend.id),
         ),
       )
+      await Promise.all([loadFriends(), loadFriendRequests()])
     } catch (error) {
       console.error(error)
       setFriendError(`Could not remove ${friend.username}.`)
@@ -225,6 +311,10 @@ export function RewindsPage() {
 
   const isAlreadyFriend = (friendId: string) =>
     friends.some((friend) => friend.id === friendId)
+  const isOutgoingRequest = (friendId: string) =>
+    outgoingRequests.some((friend) => friend.id === friendId)
+  const isIncomingRequest = (friendId: string) =>
+    incomingRequests.some((friend) => friend.id === friendId)
 
   const openComposer = () => {
     setSelectedComposerDayId(ownRewinds[0]?.id ?? null)
@@ -444,12 +534,21 @@ export function RewindsPage() {
               friendQuery={friendQuery}
               friendResults={friendResults}
               friendSearchLoading={friendSearchLoading}
+              friendRequestsLoading={friendRequestsLoading}
               friends={friends}
               friendsLoading={friendsLoading}
+              incomingRequests={incomingRequests}
+              outgoingRequests={outgoingRequests}
               isAlreadyFriend={isAlreadyFriend}
+              isIncomingRequest={isIncomingRequest}
+              isOutgoingRequest={isOutgoingRequest}
+              onTabChange={() => {
+                void loadFriends()
+                void loadFriendRequests()
+              }}
               onAddFriend={handleAddFriend}
+              onAcceptFriend={handleAcceptFriend}
               onFriendQueryChange={setFriendQuery}
-              onFriendSearch={() => void handleFriendSearch()}
               onRemoveFriend={handleRemoveFriend}
             />
           </div>
