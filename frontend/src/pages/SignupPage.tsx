@@ -1,11 +1,8 @@
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { PageTransitionOverlay } from "../components/PageTransitionOverlay";
 import wallpaper from "../assets/main_wallpaper.jpg";
 import logo from "/logo.png";
-
-const TRANSITION_DURATION = 680;
 
 export function SignupPage() {
   const navigate = useNavigate();
