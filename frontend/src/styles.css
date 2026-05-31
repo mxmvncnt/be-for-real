@@ -1265,6 +1265,7 @@ a.window-actions__button {
 .rewinds-card__stack {
   display: grid;
   gap: 6px;
+  grid-template-columns: 1fr;
 }
 
 .rewinds-card__stack--1 {
@@ -1279,15 +1280,35 @@ a.window-actions__button {
 .rewinds-card__stack--4,
 .rewinds-card__stack--5,
 .rewinds-card__stack--6 {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
 }
 
 .rewinds-card__stack-video {
   width: 92px;
-  height: 67px;
+  height: 140px;
   border-radius: 10px;
   background: #020202;
   object-fit: cover;
+}
+
+.rewinds-card__stack-video--2 {
+  height: 67px;
+}
+
+.rewinds-card__stack-video--3 {
+  height: 44px;
+}
+
+.rewinds-card__stack-video--4 {
+  height: 31px;
+}
+
+.rewinds-card__stack-video--5 {
+  height: 24px;
+}
+
+.rewinds-card__stack-video--6 {
+  height: 19px;
 }
 
 .rewinds-card__copy {
@@ -1739,7 +1760,27 @@ a.window-actions__button {
 
   .rewinds-card__stack-video {
     width: 100%;
+    height: 180px;
+  }
+
+  .rewinds-card__stack-video--2 {
     height: 86px;
+  }
+
+  .rewinds-card__stack-video--3 {
+    height: 56px;
+  }
+
+  .rewinds-card__stack-video--4 {
+    height: 42px;
+  }
+
+  .rewinds-card__stack-video--5 {
+    height: 34px;
+  }
+
+  .rewinds-card__stack-video--6 {
+    height: 28px;
   }
 }
 

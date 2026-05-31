@@ -60,6 +60,7 @@ export function RewindsPage() {
     Record<string, string>
   >({});
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [selectedComposerDayId, setSelectedComposerDayId] = useState<string | null>(null);
   const [selectedMultiFriendIds, setSelectedMultiFriendIds] = useState<
     string[]
   >([]);
@@ -196,6 +197,25 @@ export function RewindsPage() {
     () => dailyRewinds.filter((rewind) => rewind.isYou),
     [dailyRewinds],
   );
+
+  const selectedComposerDay =
+    ownRewinds.find((rewind) => rewind.id === selectedComposerDayId) ?? ownRewinds[0] ?? null;
+
+  const composerFriendOptions = useMemo(() => {
+    if (!selectedComposerDay) {
+      return [];
+    }
+
+    return friends
+      .map((friend) => ({
+        friend,
+        rewind: dailyRewinds.find(
+          (rewind) =>
+            rewind.ownerId === friend.id && rewind.dayKey === selectedComposerDay.dayKey,
+        ),
+      }))
+      .filter((entry): entry is { friend: Friend; rewind: DailyRewind } => Boolean(entry.rewind));
+  }, [dailyRewinds, friends, selectedComposerDay]);
 
   const filteredRewinds = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -342,6 +362,7 @@ export function RewindsPage() {
     friends.some((friend) => friend.id === friendId);
 
   const openComposer = () => {
+    setSelectedComposerDayId(ownRewinds[0]?.id ?? null);
     setSelectedMultiFriendIds([]);
     setComposerError(null);
     setIsComposerOpen(true);
@@ -349,6 +370,13 @@ export function RewindsPage() {
 
   const closeComposer = () => {
     setIsComposerOpen(false);
+    setSelectedComposerDayId(null);
+    setSelectedMultiFriendIds([]);
+    setComposerError(null);
+  };
+
+  const handleComposerDayChange = (rewindId: string) => {
+    setSelectedComposerDayId(rewindId);
     setSelectedMultiFriendIds([]);
     setComposerError(null);
   };
@@ -368,71 +396,45 @@ export function RewindsPage() {
   };
 
   const handleCreateMultiRewind = () => {
+    if (!selectedComposerDay) {
+      setComposerError("You need at least one personal rewind day first.");
+      return;
+    }
+
     if (selectedMultiFriendIds.length === 0) {
       setComposerError("Pick at least one friend to create a Multi-Rewind.");
       return;
     }
 
-    const selectedFriends = friends.filter((friend) =>
-      selectedMultiFriendIds.includes(friend.id),
+    const selectedFriends = composerFriendOptions.filter((entry) =>
+      selectedMultiFriendIds.includes(entry.friend.id),
     );
     if (selectedFriends.length === 0) {
       setComposerError("Selected friends were not found.");
       return;
     }
 
-    const selectedRewinds = selectedFriends
-      .map((friend) => ({
-        friend,
-        rewinds: dailyRewinds.filter((rewind) => rewind.ownerId === friend.id),
-      }))
-      .filter((entry) => entry.rewinds.length > 0);
-
-    if (selectedRewinds.length !== selectedFriends.length) {
-      setComposerError(
-        "One or more selected friends do not have any rewinds yet.",
-      );
-      return;
-    }
-
-    const latestSharedDay = ownRewinds.find((ownRewind) =>
-      selectedRewinds.every((entry) =>
-        entry.rewinds.some(
-          (friendRewind) => friendRewind.dayKey === ownRewind.dayKey,
-        ),
-      ),
-    );
-
-    if (!latestSharedDay) {
-      setComposerError(
-        "You and the selected friends do not share a rewind day yet.",
-      );
-      return;
-    }
-
     const participantRewinds = [
       {
-        ownerId: latestSharedDay.ownerId,
-        ownerName: latestSharedDay.ownerName,
-        clips: latestSharedDay.clips,
+        ownerId: selectedComposerDay.ownerId,
+        ownerName: selectedComposerDay.ownerName,
+        clips: selectedComposerDay.clips,
       },
-      ...selectedRewinds.map((entry) => {
-        const matchingRewind = entry.rewinds.find(
-          (friendRewind) => friendRewind.dayKey === latestSharedDay.dayKey,
-        );
-
+      ...selectedFriends.map((entry) => {
         return {
-          ownerId: entry.friend.id,
-          ownerName: entry.friend.username,
-          clips: matchingRewind?.clips ?? [],
+          ownerId: entry.rewind.ownerId,
+          ownerName: entry.rewind.ownerName,
+          clips: entry.rewind.clips,
         };
       }),
     ];
 
     const createdRewind: MultiRewind = {
       id: `multi-${Date.now()}`,
-      title: latestSharedDay.title.replace("Rewind", "Multi-Rewind"),
-      dayKey: latestSharedDay.dayKey,
+      title: `${profileName}'s ${selectedComposerDay.title
+        .replace(`${selectedComposerDay.ownerName}'s `, "")
+        .replace("Rewind", "Multi-Rewind")}`,
+      dayKey: selectedComposerDay.dayKey,
       participants: participantRewinds,
       createdBy: "You",
       videoUrl: null,
@@ -730,7 +732,7 @@ export function RewindsPage() {
                           {rewind.participants.map((participant) => (
                             <video
                               key={participant.ownerId}
-                              className="rewinds-card__stack-video"
+                              className={`rewinds-card__stack-video rewinds-card__stack-video--${Math.min(rewind.participants.length, 6)}`}
                               muted
                               playsInline
                               preload="metadata"
@@ -935,16 +937,45 @@ export function RewindsPage() {
             <div className="composer-step">
               <h3>Pick up to 5 friends</h3>
               <p>
-                The result is a Multi-Rewind with equal-size panels for
-                everyone, including you.
+                First choose one of your rewind days, then pick friends who also
+                recorded that same day.
               </p>
+              {ownRewinds.length > 0 ? (
+                <div className="composer-day-list">
+                  {ownRewinds.map((rewind) => (
+                    <button
+                      key={rewind.id}
+                      className={`composer-day ${
+                        selectedComposerDay?.id === rewind.id ? "composer-day--active" : ""
+                      }`}
+                      type="button"
+                      onClick={() => handleComposerDayChange(rewind.id)}
+                    >
+                      {rewind.title}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="friends-panel__message">
+                  Record your own daily rewind first before creating a Multi-Rewind.
+                </p>
+              )}
+            </div>
+
+            <div className="composer-step">
+              <h3>Pick up to 5 friends</h3>
+              <p>The result uses equal-size panels for everyone, including you.</p>
               <div className="composer-friend-list">
-                {friends.length === 0 ? (
+                {selectedComposerDay && composerFriendOptions.length === 0 ? (
+                  <p className="friends-panel__message">
+                    None of your friends recorded on that day yet.
+                  </p>
+                ) : friends.length === 0 ? (
                   <p className="friends-panel__message">
                     Add friends first to create a Multi-Rewind.
                   </p>
                 ) : (
-                  friends.map((friend) => (
+                  composerFriendOptions.map(({ friend, rewind }) => (
                     <label key={friend.id} className="composer-friend">
                       <input
                         checked={selectedMultiFriendIds.includes(friend.id)}
@@ -956,7 +987,7 @@ export function RewindsPage() {
                         onChange={() => toggleMultiFriend(friend.id)}
                       />
                       <span>{friend.username}</span>
-                      <em>{friend.email}</em>
+                      <em>{rewind.title}</em>
                     </label>
                   ))
                 )}
@@ -973,13 +1004,13 @@ export function RewindsPage() {
                 {selectedMultiFriendIds.length > 0
                   ? [
                       "You",
-                      ...friends
-                        .filter((friend) =>
+                      ...composerFriendOptions
+                        .filter(({ friend }) =>
                           selectedMultiFriendIds.includes(friend.id),
                         )
-                        .map((friend) => friend.username),
+                        .map(({ friend }) => friend.username),
                     ].join(", ")
-                  : "Choose up to 5 friends to continue"}
+                  : "Choose a day and at least one friend to continue"}
               </span>
             </div>
 

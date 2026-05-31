@@ -76,12 +76,15 @@ export async function compileMultiRewindVideo(participants: MultiParticipantInpu
             context,
             videos: activeVideos,
             draw: () => {
+              context.fillStyle = '#020202'
+              context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+
               participantVideos.forEach((participant, participantIndex) => {
                 const panel = layout[participantIndex]
                 const video = participant.videos[segmentIndex]
                 const timeLabel = participant.clips[segmentIndex].timeLabel
 
-                drawVideoCover(context, video, panel.x, panel.y, panel.width, panel.height)
+                drawVideoPanel(context, video, panel.x, panel.y, panel.width, panel.height)
                 if (timeLabel) {
                   drawTimeBadge(
                     context,
@@ -199,33 +202,15 @@ function getFiniteDuration(video: HTMLVideoElement) {
 
 function getMultiRewindLayout(count: number, width: number, height: number) {
   const normalizedCount = Math.max(1, Math.min(count, 6))
+  const gap = 12
+  const panelHeight = (height - gap * (normalizedCount - 1)) / normalizedCount
 
-  if (normalizedCount === 1) {
-    return [{ x: 0, y: 0, width, height }]
-  }
-
-  if (normalizedCount === 2) {
-    return [
-      { x: 0, y: 0, width, height: height / 2 },
-      { x: 0, y: height / 2, width, height: height / 2 },
-    ]
-  }
-
-  const columns = 2
-  const rows = normalizedCount <= 4 ? 2 : 3
-  const panelWidth = width / columns
-  const panelHeight = height / rows
-
-  return Array.from({ length: normalizedCount }, (_, index) => {
-    const row = Math.floor(index / columns)
-    const column = index % columns
-    return {
-      x: column * panelWidth,
-      y: row * panelHeight,
-      width: panelWidth,
-      height: panelHeight,
-    }
-  })
+  return Array.from({ length: normalizedCount }, (_, index) => ({
+    x: 0,
+    y: index * (panelHeight + gap),
+    width,
+    height: panelHeight,
+  }))
 }
 
 async function loadVideoElement(src: string) {
@@ -278,6 +263,22 @@ function drawVideoCover(
   }
 
   context.drawImage(video, drawX, drawY, drawWidth, drawHeight)
+}
+
+function drawVideoPanel(
+  context: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  context.save()
+  context.beginPath()
+  context.rect(x, y, width, height)
+  context.clip()
+  drawVideoCover(context, video, x, y, width, height)
+  context.restore()
 }
 
 function drawTimeBadge(
