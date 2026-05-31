@@ -74,9 +74,8 @@ input {
   pointer-events: none;
   opacity: 0;
   background:
-    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.9), transparent 16%),
-    radial-gradient(circle at 72% 66%, rgba(160, 255, 227, 0.48), transparent 20%),
-    linear-gradient(180deg, rgba(201, 249, 255, 0.92), rgba(21, 164, 235, 0.9));
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.68), transparent 18%),
+    rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(0);
   transition:
     opacity 220ms ease,
@@ -557,6 +556,8 @@ input {
   color: #6e7885;
   font-size: 1rem;
   line-height: 1;
+  pointer-events: none;
+  cursor: default;
 }
 
 .window-actions__button--close {
