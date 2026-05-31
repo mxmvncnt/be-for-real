@@ -9,8 +9,8 @@ export default defineConfig({
             includeAssets: ['favicon.svg', 'apple-touch-icon.svg', 'masked-icon.svg'],
             manifest: {
                 name: 'Be For Real',
-                short_name: 'BeReal',
-                description: 'A React PWA shell for building feature-rich flows on top of a Hono API.',
+                short_name: 'BFRL',
+                description: 'A social media platform for sharing and discovering real-life moments through short videos.',
                 theme_color: '#f5efe6',
                 background_color: '#f5efe6',
                 display: 'standalone',
