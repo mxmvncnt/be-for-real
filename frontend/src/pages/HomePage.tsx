@@ -27,7 +27,6 @@ export function HomePage() {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
-
     try {
       const token = await api.login({ email, password });
       window.localStorage.setItem("bfr.token", token);
@@ -68,6 +67,12 @@ export function HomePage() {
       <div
         className={`page-transition-overlay${transitioning ? " is-active" : ""}`}
       >
+        <span className="transition-loading">
+          Loading<span className="transition-loading__dots" />
+        </span>
+        {Array.from({ length: 14 }).map((_, index) => (
+          <span key={`sparkle-${index}`} className="transition-sparkle" />
+        ))}
         {Array.from({ length: 10 }).map((_, index) => (
           <span key={index} className="bubble" />
         ))}
@@ -123,11 +128,6 @@ export function HomePage() {
               {submitting ? "Logging in..." : "Login"}
             </button>
           </form>
-
-          <p className="auth-helper-link">
-            Ready to test the main feature?{" "}
-            <Link to="/camera">Open Camera</Link>
-          </p>
 
           <p className="auth-switch">
             Don&apos;t have an account?{" "}
