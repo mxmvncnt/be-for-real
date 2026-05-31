@@ -60,8 +60,9 @@ export function CameraControls({
             disabled={!cameraReady}
             type="button"
             onClick={onStartRecording}
+            aria-label="Start recording"
           >
-            <span className="camera-capture__icon">REC</span>
+            <img className="camera-capture__icon" src="/button-cam.svg" alt="Record" />
           </button>
         )}
 

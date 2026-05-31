@@ -25,8 +25,13 @@ export function ProfileBanner({
         <p>{ownRewindCount} personal rewinds</p>
       </div>
 
-      <button className="profile-banner__friends-button" type="button" onClick={onOpenFriends}>
-        Friends
+      <button
+        className="profile-banner__friends-button"
+        type="button"
+        onClick={onOpenFriends}
+        aria-label="Friends"
+      >
+        <img src="/button-friend.svg" alt="Friends" />
       </button>
     </section>
   )

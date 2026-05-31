@@ -57,18 +57,22 @@ export function FriendsPanel({
       return (
         <div className="friends-panel__actions">
           <button
+            className="icon-button"
             disabled={friendActionLoadingId === friend.id}
             type="button"
             onClick={() => onAcceptFriend(friend)}
+            aria-label="Accept friend"
           >
-            {friendActionLoadingId === friend.id ? 'Accepting...' : 'Accept'}
+            <img src="/button-yes.svg" alt="Accept friend" />
           </button>
           <button
+            className="icon-button"
             disabled={friendActionLoadingId === friend.id}
             type="button"
             onClick={() => onRemoveFriend(friend)}
+            aria-label="Refuse friend"
           >
-            {friendActionLoadingId === friend.id ? 'Removing...' : 'Refuse'}
+            <img src="/button-no.svg" alt="Refuse friend" />
           </button>
         </div>
       )
@@ -77,30 +81,34 @@ export function FriendsPanel({
     if (isOutgoingRequest(friend.id)) {
       return (
         <button
+          className="icon-button"
           disabled={friendActionLoadingId === friend.id}
           type="button"
           onClick={() => onRemoveFriend(friend)}
+          aria-label="Cancel friend request"
         >
-          {friendActionLoadingId === friend.id ? 'Canceling...' : 'Cancel'}
+          <img src="/button-no.svg" alt="Cancel friend request" />
         </button>
       )
     }
 
     if (isAlreadyFriend(friend.id)) {
       return (
-        <button disabled type="button">
-          Friend
+        <button className="icon-button" disabled type="button" aria-label="Friend">
+          <img src="/button-yes.svg" alt="Friend" />
         </button>
       )
     }
 
     return (
       <button
+        className="icon-button"
         disabled={friendActionLoadingId === friend.id}
         type="button"
         onClick={() => onAddFriend(friend)}
+        aria-label="Add friend"
       >
-        {friendActionLoadingId === friend.id ? 'Adding...' : 'Add'}
+        <img src="/button-plus.svg" alt="Add friend" />
       </button>
     )
   }
@@ -153,18 +161,22 @@ export function FriendsPanel({
                     </div>
                     <div className="friends-panel__actions">
                       <button
+                        className="icon-button"
                         disabled={friendActionLoadingId === friend.id}
                         type="button"
                         onClick={() => onAcceptFriend(friend)}
+                        aria-label="Accept friend"
                       >
-                        {friendActionLoadingId === friend.id ? 'Accepting...' : 'Accept'}
+                        <img src="/button-yes.svg" alt="Accept friend" />
                       </button>
                       <button
+                        className="icon-button"
                         disabled={friendActionLoadingId === friend.id}
                         type="button"
                         onClick={() => onRemoveFriend(friend)}
+                        aria-label="Refuse friend"
                       >
-                        {friendActionLoadingId === friend.id ? 'Removing...' : 'Refuse'}
+                        <img src="/button-no.svg" alt="Refuse friend" />
                       </button>
                     </div>
                   </article>
@@ -188,11 +200,13 @@ export function FriendsPanel({
                       <span>{friend.email}</span>
                     </div>
                     <button
+                      className="icon-button"
                       disabled={friendActionLoadingId === friend.id}
                       type="button"
                       onClick={() => onRemoveFriend(friend)}
+                      aria-label="Remove friend"
                     >
-                      {friendActionLoadingId === friend.id ? 'Removing...' : 'Remove'}
+                      <img src="/button-no.svg" alt="Remove friend" />
                     </button>
                   </article>
                 ))}
