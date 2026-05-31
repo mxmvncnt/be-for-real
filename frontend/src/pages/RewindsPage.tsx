@@ -204,32 +204,35 @@ export function RewindsPage() {
     }
     setFriendError(null)
 
-    api
-      .searchUsers(query)
-      .then((results) => {
-        if (ignore) {
-          return
-        }
+    const timeoutId = window.setTimeout(() => {
+      api
+        .searchUsers(query)
+        .then((results) => {
+          if (ignore) {
+            return
+          }
 
-        const friendIds = new Set(friends.map((friend) => friend.id))
-        const filtered = results.filter((result) => !friendIds.has(result.id))
-        setFriendResults(filtered.slice(0, 5))
-      })
-      .catch((error) => {
-        if (ignore) {
-          return
-        }
-        console.error(error)
-        setFriendError('Could not search users right now.')
-      })
-      .finally(() => {
-        if (!ignore) {
-          setFriendSearchLoading(false)
-        }
-      })
+          const friendIds = new Set(friends.map((friend) => friend.id))
+          const filtered = results.filter((result) => !friendIds.has(result.id))
+          setFriendResults(filtered.slice(0, 5))
+        })
+        .catch((error) => {
+          if (ignore) {
+            return
+          }
+          console.error(error)
+          setFriendError('Could not search users right now.')
+        })
+        .finally(() => {
+          if (!ignore) {
+            setFriendSearchLoading(false)
+          }
+        })
+    }, 300)
 
     return () => {
       ignore = true
+      window.clearTimeout(timeoutId)
     }
   }, [friendQuery, friends])
 
