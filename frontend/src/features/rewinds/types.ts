@@ -7,7 +7,7 @@ export type RewindClip = {
 
 export type DailyRewind = {
   id: string
-  dayKey: string
+  dateIsoString: string
   title: string
   ownerId: string
   ownerName: string
@@ -25,7 +25,7 @@ export type MultiRewindParticipant = {
 export type MultiRewind = {
   id: string
   title: string
-  dayKey: string
+  dateIsoString: string
   participants: MultiRewindParticipant[]
   createdBy: string
   videoUrl: string | null

@@ -297,7 +297,7 @@ export function RewindsPage() {
       title: `${profileName}'s ${selectedComposerDay.title
         .replace(`${selectedComposerDay.ownerName}'s `, '')
         .replace('Rewind', 'Multi-Rewind')}`,
-      dayKey: selectedComposerDay.dayKey,
+      dateIsoString: selectedComposerDay.dateIsoString,
       participants: participantRewinds,
       createdBy: 'You',
       videoUrl: null,

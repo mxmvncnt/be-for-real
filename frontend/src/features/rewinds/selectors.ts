@@ -6,8 +6,8 @@ export function buildDailyRewinds(rewindFeed: RewindVideo[]): DailyRewind[] {
 
   for (const clip of rewindFeed) {
     const createdAt = new Date(clip.createdAt)
-    const dayKey = createdAt.toISOString().slice(0, 10)
-    const rewindKey = `${clip.userId}:${dayKey}`
+    const dateIsoString = createdAt.toISOString().slice(0, 10)
+    const rewindKey = `${clip.userId}:${dateIsoString}`
     const dayTitle = createdAt.toLocaleDateString(undefined, {
       month: 'long',
       day: 'numeric',
@@ -16,7 +16,7 @@ export function buildDailyRewinds(rewindFeed: RewindVideo[]): DailyRewind[] {
     if (!groups.has(rewindKey)) {
       groups.set(rewindKey, {
         id: rewindKey,
-        dayKey,
+        dateIsoString: dateIsoString,
         title: `${clip.username}'s ${dayTitle} Rewind`,
         ownerId: clip.userId,
         ownerName: clip.isYou ? 'You' : clip.username,
@@ -92,7 +92,7 @@ export function getComposerFriendOptions(
       friend,
       rewind: dailyRewinds.find(
         (rewind) =>
-          rewind.ownerId === friend.id && rewind.dayKey === selectedComposerDay.dayKey,
+          rewind.ownerId === friend.id && rewind.dateIsoString === selectedComposerDay.dateIsoString,
       ),
     }))
     .filter((entry): entry is { friend: Friend; rewind: DailyRewind } => Boolean(entry.rewind))
