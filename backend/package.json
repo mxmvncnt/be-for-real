@@ -1,33 +1,33 @@
 {
-  "name": "backend",
-  "type": "module",
-  "scripts": {
-    "dev": "tsx watch --env-file=.env src/index.ts",
-    "build": "tsc",
-    "start": "node --env-file=.env dist/src/index.js",
-    "db:push": "drizzle-kit push",
-    "format": "npx rettier --write .",
-    "format:check": "npx prettier --check ."
-  },
-  "dependencies": {
-    "@hono/node-server": "^1.19.14",
-    "@hono/swagger-ui": "^0.6.1",
-    "@hono/zod-openapi": "^1.4.0",
-    "@hono/zod-validator": "^0.8.0",
-    "argon2": "^0.44.0",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.23",
-    "mongodb": "^7.2.0",
-    "pg": "^8.21.0",
-    "prettier": "^3.8.3",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@types/node": "^20.19.41",
-    "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10",
-    "tsx": "^4.22.3",
-    "typescript": "^5.8.3"
-  }
+	"name": "backend",
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch --env-file=.env src/index.ts",
+		"build": "tsc",
+		"start": "node --env-file=.env dist/src/index.js",
+		"db:push": "drizzle-kit push",
+		"format": "npx prettier --write .",
+		"format:check": "npx prettier --check ."
+	},
+	"dependencies": {
+		"@hono/node-server": "^1.19.14",
+		"@hono/swagger-ui": "^0.6.1",
+		"@hono/zod-openapi": "^1.4.0",
+		"@hono/zod-validator": "^0.8.0",
+		"argon2": "^0.44.0",
+		"dotenv": "^17.4.2",
+		"drizzle-orm": "^0.45.2",
+		"hono": "^4.12.23",
+		"mongodb": "^7.2.0",
+		"pg": "^8.21.0",
+		"prettier": "^3.8.3",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@types/node": "^20.19.41",
+		"@types/pg": "^8.20.0",
+		"drizzle-kit": "^0.31.10",
+		"tsx": "^4.22.3",
+		"typescript": "^5.8.3"
+	}
 }
