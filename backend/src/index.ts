@@ -6,6 +6,7 @@ import user from './routes/user.js'
 import videos from './routes/videos.js'
 import swagger from './swagger.js'
 import { logger } from 'hono/logger'
+import { startVideoReminder } from './utils/hourlyVideoReminder.js'
 
 const app = new Hono()
 
@@ -20,6 +21,8 @@ app.route('/friend', friend)
 app.route('/user', user)
 app.route('/videos', videos)
 app.route('/swagger', swagger)
+
+startVideoReminder();
 
 const serverPort = parseInt(process.env.SERVER_PORT ?? process.env.PORT ?? '3000', 10)
 
