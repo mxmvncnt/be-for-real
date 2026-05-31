@@ -51,23 +51,31 @@ export function RewindsPage() {
   const [multiGenerateError, setMultiGenerateError] = useState<string | null>(null)
   const [generatingMultiId, setGeneratingMultiId] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadRewindFeed() {
-      setRewindsLoading(true)
-      setRewindsError(null)
+  const loadRewindFeed = async () => {
+    setRewindsLoading(true)
+    setRewindsError(null)
 
-      try {
-        const feed = await api.getRewindFeed()
-        setRewindFeed(feed)
-      } catch (error) {
-        console.error(error)
-        setRewindsError('Could not load rewinds yet.')
-      } finally {
-        setRewindsLoading(false)
-      }
+    try {
+      const feed = await api.getRewindFeed()
+      setRewindFeed(feed)
+    } catch (error) {
+      console.error(error)
+      setRewindsError('Could not load rewinds yet.')
+    } finally {
+      setRewindsLoading(false)
     }
+  }
 
+  useEffect(() => {
     void loadRewindFeed()
+
+    const intervalId = window.setInterval(() => {
+      void loadRewindFeed()
+    }, 5000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
   }, [])
 
   useEffect(() => {

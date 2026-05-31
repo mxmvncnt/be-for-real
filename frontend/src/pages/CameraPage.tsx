@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { PageTransitionOverlay } from '../components/PageTransitionOverlay'
 import { CameraControls } from '../features/camera/components/CameraControls'
 import { CameraHeader } from '../features/camera/components/CameraHeader'
 import { CameraPreview } from '../features/camera/components/CameraPreview'
@@ -13,28 +15,30 @@ import { getCameraStatusMessage } from '../features/camera/utils/status'
 import { api } from '../lib/api'
 
 export function CameraPage() {
+  const navigate = useNavigate()
   const liveVideoRef = useRef<HTMLVideoElement | null>(null)
   const playbackVideoRef = useRef<HTMLVideoElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<number | null>(null)
+  const flipResetTimerRef = useRef<number | null>(null)
+  const pendingFlipRef = useRef<{
+    previousDeviceId: string | null
+    previousFacingMode: 'user' | 'environment'
+  } | null>(null)
 
   const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('user')
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [availableDeviceIds, setAvailableDeviceIds] = useState<string[]>([])
-  const [clipUrl, setClipUrl] = useState<string | null>(null)
-  const [clipBlob, setClipBlob] = useState<Blob | null>(null)
-  const [clipCreatedAt, setClipCreatedAt] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(MAX_DURATION_SECONDS)
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [retryTick, setRetryTick] = useState(0)
+  const [flipFailed, setFlipFailed] = useState(false)
   const [selectedFilter, setSelectedFilter] = useState<FilterId>('clear')
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [savingClip, setSavingClip] = useState(false)
-  const [clipSaved, setClipSaved] = useState(false)
+  const [processingClip, setProcessingClip] = useState(false)
 
   const activeFilter = useMemo(
     () => FILTERS.find((filter) => filter.id === selectedFilter) ?? FILTERS[0],
@@ -43,7 +47,7 @@ export function CameraPage() {
 
   const statusMessage = getCameraStatusMessage({
     cameraError,
-    clipUrl,
+    clipUrl: null,
     recording,
     secondsLeft,
     cameraReady,
@@ -70,6 +74,14 @@ export function CameraPage() {
     await releaseVideoElement(liveVideoRef.current)
     await new Promise((resolve) => window.setTimeout(resolve, isFirefoxBrowser() ? 400 : 120))
   }
+
+  useEffect(() => {
+    return () => {
+      if (flipResetTimerRef.current) {
+        window.clearTimeout(flipResetTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -131,10 +143,30 @@ export function CameraPage() {
       if (!stream) {
         console.error(lastError)
         if (!cancelled) {
-          const message = isFirefoxBrowser()
-            ? 'Firefox is having trouble reacquiring the camera. Tap Retry, or use Edge/Chrome for the demo.'
-            : 'Camera was denied, busy, or unavailable. Close other camera apps and tap Retry.'
-          setCameraError(message)
+          if (pendingFlipRef.current) {
+            const { previousDeviceId, previousFacingMode } = pendingFlipRef.current
+            pendingFlipRef.current = null
+            setFlipFailed(true)
+            if (flipResetTimerRef.current) {
+              window.clearTimeout(flipResetTimerRef.current)
+            }
+            flipResetTimerRef.current = window.setTimeout(() => {
+              setFlipFailed(false)
+            }, 1400)
+
+            if (selectedDeviceId !== previousDeviceId) {
+              setSelectedDeviceId(previousDeviceId)
+            }
+            if (cameraFacingMode !== previousFacingMode) {
+              setCameraFacingMode(previousFacingMode)
+            }
+            setCameraError(null)
+          } else {
+            const message = isFirefoxBrowser()
+              ? 'Firefox is having trouble reacquiring the camera. Use Edge or Chrome for the demo.'
+              : 'Camera was denied, busy, or unavailable. Close other camera apps.'
+            setCameraError(message)
+          }
         }
         return
       }
@@ -163,6 +195,7 @@ export function CameraPage() {
       }
 
       streamRef.current = stream
+      pendingFlipRef.current = null
 
       if (liveVideoRef.current) {
         liveVideoRef.current.srcObject = stream
@@ -184,23 +217,7 @@ export function CameraPage() {
       cancelled = true
       void releaseCurrentStream()
     }
-  }, [cameraFacingMode, retryTick, selectedDeviceId])
-
-  useEffect(() => {
-    if (!playbackVideoRef.current || !clipUrl) {
-      return
-    }
-
-    playbackVideoRef.current.load()
-  }, [clipUrl])
-
-  useEffect(() => {
-    return () => {
-      if (clipUrl) {
-        URL.revokeObjectURL(clipUrl)
-      }
-    }
-  }, [clipUrl])
+  }, [cameraFacingMode, selectedDeviceId])
 
   const stopRecording = () => {
     if (timerRef.current) {
@@ -217,7 +234,7 @@ export function CameraPage() {
   }
 
   const handleRecord = () => {
-    if (!streamRef.current || recording) {
+    if (!streamRef.current || recording || processingClip) {
       return
     }
 
@@ -236,32 +253,34 @@ export function CameraPage() {
     }
 
     recorder.onstop = async () => {
-      const createdAt = new Date().toISOString()
-      const rawBlob = new Blob(chunksRef.current, {
-        type: recorder.mimeType || 'video/webm',
-      })
+      setProcessingClip(true)
 
-      let finalBlob = rawBlob
-      if (shouldMirrorRecordedClip) {
-        try {
-          finalBlob = await mirrorRecordedVideo(rawBlob)
-        } catch (error) {
-          console.error(error)
-          finalBlob = rawBlob
+      try {
+        const createdAt = new Date().toISOString()
+        const rawBlob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || 'video/webm',
+        })
+
+        let finalBlob = rawBlob
+        if (shouldMirrorRecordedClip) {
+          try {
+            finalBlob = await mirrorRecordedVideo(rawBlob)
+          } catch (error) {
+            console.error(error)
+            finalBlob = rawBlob
+          }
         }
+
+        setSaveError(null)
+        await api.uploadClip(finalBlob, createdAt)
+        navigate('/rewinds')
+        return
+      } catch (error) {
+        console.error(error)
+        setSaveError('Could not save your rewind. Try logging in again.')
+      } finally {
+        setProcessingClip(false)
       }
-
-      const nextUrl = URL.createObjectURL(finalBlob)
-      setClipBlob(finalBlob)
-      setClipCreatedAt(createdAt)
-      setClipSaved(false)
-      setSaveError(null)
-      setClipUrl((previousUrl) => {
-        if (previousUrl) {
-          URL.revokeObjectURL(previousUrl)
-        }
-        return nextUrl
-      })
     }
 
     mediaRecorderRef.current = recorder
@@ -281,8 +300,14 @@ export function CameraPage() {
   }
 
   const handleFlipCamera = () => {
-    if (recording) {
+    if (recording || processingClip) {
       return
+    }
+
+    setFlipFailed(false)
+    pendingFlipRef.current = {
+      previousDeviceId: selectedDeviceId,
+      previousFacingMode: cameraFacingMode,
     }
 
     if (availableDeviceIds.length > 1) {
@@ -298,75 +323,51 @@ export function CameraPage() {
     setCameraFacingMode((previous) => (previous === 'user' ? 'environment' : 'user'))
   }
 
-  const handleDiscardClip = () => {
-    setClipBlob(null)
-    setClipCreatedAt(null)
-    setClipSaved(false)
-    setSaveError(null)
-    setClipUrl((previousUrl) => {
-      if (previousUrl) {
-        URL.revokeObjectURL(previousUrl)
-      }
-      return null
-    })
-  }
-
-  const handleSaveClip = async () => {
-    if (!clipBlob || !clipCreatedAt || savingClip || clipSaved) {
-      return
-    }
-
-    setSavingClip(true)
-    setSaveError(null)
-
-    try {
-      await api.uploadClip(clipBlob, clipCreatedAt)
-      setClipSaved(true)
-    } catch (error) {
-      console.error(error)
-      setSaveError('Could not save your rewind. Try logging in again.')
-    } finally {
-      setSavingClip(false)
-    }
-  }
-
-  const handleRetryCamera = () => {
-    if (recording) {
-      return
-    }
-
-    setRetryTick((previous) => previous + 1)
-  }
-
   return (
     <section className="camera-screen" aria-labelledby="camera-title">
       <CameraHeader />
-      <CameraPreview
-        activeFilterClassName={activeFilter.className}
-        cameraError={cameraError}
-        cameraFacingMode={cameraFacingMode}
-        clipUrl={clipUrl}
-        liveVideoRef={liveVideoRef}
-        playbackVideoRef={playbackVideoRef}
-        statusMessage={statusMessage}
-      />
+      <div className="camera-window">
+        <CameraPreview
+          activeFilterClassName={activeFilter.className}
+          cameraError={cameraError}
+          cameraFacingMode={cameraFacingMode}
+          clipUrl={null}
+          liveVideoRef={liveVideoRef}
+          playbackVideoRef={playbackVideoRef}
+          statusMessage={statusMessage}
+        >
+          {recording ? (
+            <button
+              className="camera-window__capture camera-capture camera-capture--recording"
+              type="button"
+              onClick={stopRecording}
+            >
+              <span />
+            </button>
+          ) : (
+            <button
+              className="camera-window__capture camera-capture"
+              disabled={!cameraReady || processingClip}
+              type="button"
+              onClick={handleRecord}
+              aria-label="Start recording"
+            >
+              <img className="camera-capture__icon" src="/button-cam.svg" alt="Record" />
+            </button>
+          )}
+        </CameraPreview>
+      </div>
       <CameraControls
-        cameraError={cameraError}
         cameraReady={cameraReady}
-        clipSaved={clipSaved}
-        clipUrl={clipUrl}
+        flipFailed={flipFailed}
+        processingClip={processingClip}
         recording={recording}
         saveError={saveError}
-        savingClip={savingClip}
-        onDiscardClip={handleDiscardClip}
         onFlipCamera={handleFlipCamera}
-        onRetryCamera={handleRetryCamera}
-        onSaveClip={() => void handleSaveClip()}
         onSelectFilter={setSelectedFilter}
-        onStartRecording={handleRecord}
-        onStopRecording={stopRecording}
         selectedFilter={selectedFilter}
       />
+      <PageTransitionOverlay active={processingClip} />
     </section>
   )
 }
