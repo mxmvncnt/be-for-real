@@ -150,8 +150,12 @@ videos.get('/feed', async (c) => {
 	return c.json(feed, 200)
 })
 
-videos.get('/mashup/:date/:userId', async (c) => {
-	const userId = String(c.req.param('userId'))
+videos.post('/mashup/:date', async (c) => {
+	const { userId, musicId, friendsIds } = await c.req.json<{
+		userId: string
+		musicId: string
+		friendsIds: string[]
+	}>()
 
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
