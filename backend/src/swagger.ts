@@ -431,6 +431,50 @@ const openApiDoc = {
 				},
 			},
 		},
+		'/videos/multi-rewind/{date}': {
+			post: {
+				summary: 'Create or retrieve a stacked Multi-Rewind for a date',
+				tags: ['Videos'],
+				security: [{ TokenAuth: [] }],
+				parameters: [
+					{
+						name: 'date',
+						in: 'path',
+						required: true,
+						schema: { type: 'string', format: 'date-time' },
+						description: 'Start of the day (ISO 8601) to build the Multi-Rewind from',
+					},
+				],
+				requestBody: {
+					required: true,
+					content: {
+						'application/json': {
+							schema: {
+								type: 'object',
+								properties: {
+									participantIds: {
+										type: 'array',
+										items: { type: 'string', format: 'uuid' },
+										minItems: 2,
+										maxItems: 4,
+										description:
+											'User IDs to include in the stack. Must include the creator and at most 4 people total.',
+									},
+								},
+								required: ['participantIds'],
+							},
+						},
+					},
+				},
+				responses: {
+					'200': { description: 'Existing Multi-Rewind returned' },
+					'201': { description: 'Multi-Rewind created' },
+					'400': { description: 'Invalid participant count or creator not included' },
+					'401': { description: 'Missing or invalid token, or not friends with a participant' },
+					'404': { description: 'No clips for selected date' },
+				},
+			},
+		},
 		'/videos/clips/{id}': {
 			get: {
 				summary: 'Get all clips from a specific user',
