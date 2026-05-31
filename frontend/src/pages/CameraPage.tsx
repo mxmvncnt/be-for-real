@@ -221,6 +221,7 @@ export function CameraPage() {
       return
     }
 
+    const shouldMirrorRecordedClip = cameraFacingMode === 'user'
     const mimeType = getSupportedMimeType()
     chunksRef.current = []
 
@@ -234,13 +235,24 @@ export function CameraPage() {
       }
     }
 
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       const createdAt = new Date().toISOString()
-      const blob = new Blob(chunksRef.current, {
+      const rawBlob = new Blob(chunksRef.current, {
         type: recorder.mimeType || 'video/webm',
       })
-      const nextUrl = URL.createObjectURL(blob)
-      setClipBlob(blob)
+
+      let finalBlob = rawBlob
+      if (shouldMirrorRecordedClip) {
+        try {
+          finalBlob = await mirrorRecordedVideo(rawBlob)
+        } catch (error) {
+          console.error(error)
+          finalBlob = rawBlob
+        }
+      }
+
+      const nextUrl = URL.createObjectURL(finalBlob)
+      setClipBlob(finalBlob)
       setClipCreatedAt(createdAt)
       setClipSaved(false)
       setSaveError(null)
@@ -374,6 +386,85 @@ function getSupportedMimeType() {
     (candidate) =>
       typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidate),
   )
+}
+
+async function mirrorRecordedVideo(sourceBlob: Blob) {
+  const sourceUrl = URL.createObjectURL(sourceBlob)
+  const video = document.createElement('video')
+  video.src = sourceUrl
+  video.muted = true
+  video.playsInline = true
+  video.preload = 'auto'
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve()
+      video.onerror = () => reject(new Error('Could not load recorded clip for mirroring.'))
+    })
+
+    const width = Math.max(2, Math.floor(video.videoWidth || 720))
+    const height = Math.max(2, Math.floor(video.videoHeight || 1280))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const context = canvas.getContext('2d')
+    if (!context) {
+      throw new Error('Canvas is not available for mirroring.')
+    }
+    const ctx = context
+
+    const stream = canvas.captureStream(30)
+    const mimeType = getSupportedMimeType()
+    const recorder = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream)
+    const chunks: BlobPart[] = []
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data)
+      }
+    }
+
+    const stopPromise = new Promise<Blob>((resolve) => {
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: recorder.mimeType || sourceBlob.type || 'video/webm' }))
+      }
+    })
+
+    recorder.start()
+    await video.play()
+
+    await new Promise<void>((resolve) => {
+      function drawFrame() {
+        ctx.clearRect(0, 0, width, height)
+        ctx.save()
+        ctx.scale(-1, 1)
+        ctx.drawImage(video, -width, 0, width, height)
+        ctx.restore()
+
+        if (video.ended) {
+          resolve()
+          return
+        }
+
+        requestAnimationFrame(drawFrame)
+      }
+
+      requestAnimationFrame(drawFrame)
+    })
+
+    recorder.stop()
+    stream.getTracks().forEach((track) => track.stop())
+    video.pause()
+    video.remove()
+
+    const mirroredBlob = await stopPromise
+    return mirroredBlob.size > 0 ? mirroredBlob : sourceBlob
+  } finally {
+    URL.revokeObjectURL(sourceUrl)
+  }
 }
 
 function isFirefoxBrowser() {
