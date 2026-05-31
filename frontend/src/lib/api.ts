@@ -48,6 +48,13 @@ export type Video = {
   type: VideoType;
 };
 
+export type Song = {
+  id: string;
+  title: string;
+  fileName: string;
+  startTimestamp: string;
+};
+
 export type RewindVideo = Video & {
   username: string;
   isYou: boolean;
@@ -169,8 +176,9 @@ export const api = {
     request<RewindVideo[]>("/videos/feed", {
       headers: getAuthHeaders(),
     }),
-  logout: () => 
-    request<{ ok:boolean }>("/auth/logout", {
+  getSongs: () => request<Song[]>("/videos/songs"),
+  logout: () =>
+    request<{ ok: boolean }>("/auth/logout", {
       method: "POST",
       headers: getAuthHeaders(),
     }),
