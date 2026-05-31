@@ -2,17 +2,17 @@ import type { DailyRewind } from '../types'
 
 type RewindPlayerModalProps = {
   rewind: DailyRewind
-  compiledVideoUrl: string | undefined
-  isRendering: boolean
-  renderError: string | null
+  videoUrl: string | undefined
+  isGenerating: boolean
+  generateError: string | null
   onClose: () => void
 }
 
 export function RewindPlayerModal({
   rewind,
-  compiledVideoUrl,
-  isRendering,
-  renderError,
+  videoUrl,
+  isGenerating,
+  generateError,
   onClose,
 }: RewindPlayerModalProps) {
   return (
@@ -28,15 +28,15 @@ export function RewindPlayerModal({
           </button>
         </div>
 
-        {renderError ? <p className="friends-panel__message">{renderError}</p> : null}
+        {generateError ? <p className="friends-panel__message">{generateError}</p> : null}
 
-        {compiledVideoUrl ? (
+        {videoUrl ? (
           <div className="rewind-player__stage">
-            <video autoPlay className="rewind-player__video" controls playsInline src={compiledVideoUrl} />
+            <video autoPlay className="rewind-player__video" controls playsInline src={videoUrl} />
           </div>
         ) : (
           <div className="rewind-player__loading">
-            {isRendering ? 'Compiling your rewind...' : 'Preparing rewind...'}
+            {isGenerating ? 'Generating your rewind...' : 'Preparing rewind...'}
           </div>
         )}
 

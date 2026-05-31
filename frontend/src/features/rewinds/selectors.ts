@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import type { Friend, RewindVideo } from '../../lib/api'
 import type { DailyRewind, MultiRewind } from './types'
 
@@ -5,18 +6,19 @@ export function buildDailyRewinds(rewindFeed: RewindVideo[]): DailyRewind[] {
   const groups = new Map<string, DailyRewind>()
 
   for (const clip of rewindFeed) {
-    const createdAt = new Date(clip.createdAt)
-    const dayKey = createdAt.toISOString().slice(0, 10)
-    const rewindKey = `${clip.userId}:${dayKey}`
-    const dayTitle = createdAt.toLocaleDateString(undefined, {
-      month: 'long',
-      day: 'numeric',
-    })
+    if (clip.type !== "clip") {
+      continue
+    }
+
+    const createdAt = DateTime.fromISO(clip.createdAt)
+    const dateIsoString = createdAt.toISODate() ?? createdAt.toFormat('yyyy-MM-dd')
+    const rewindKey = `${clip.userId}:${dateIsoString}`
+    const dayTitle = createdAt.toLocaleString({ month: 'long', day: 'numeric' })
 
     if (!groups.has(rewindKey)) {
       groups.set(rewindKey, {
         id: rewindKey,
-        dayKey,
+        dateIsoString: dateIsoString,
         title: `${clip.username}'s ${dayTitle} Rewind`,
         ownerId: clip.userId,
         ownerName: clip.isYou ? 'You' : clip.username,
@@ -31,10 +33,7 @@ export function buildDailyRewinds(rewindFeed: RewindVideo[]): DailyRewind[] {
       id: clip.id,
       createdAt: clip.createdAt,
       videoUrl: clip.videoUrl,
-      timeLabel: createdAt.toLocaleTimeString([], {
-        hour: 'numeric',
-        minute: '2-digit',
-      }),
+      timeLabel: createdAt.toLocaleString(DateTime.TIME_SIMPLE),
     })
   }
 
@@ -78,12 +77,12 @@ export function filterMultiRewinds(multiRewinds: MultiRewind[], searchTerm: stri
   )
 }
 
-export function getComposerFriendOptions(
+export function getFriendWithRewindForDay(
   friends: Friend[],
   dailyRewinds: DailyRewind[],
-  selectedComposerDay: DailyRewind | null,
+  selectedDay: DailyRewind | null,
 ) {
-  if (!selectedComposerDay) {
+  if (!selectedDay) {
     return []
   }
 
@@ -92,7 +91,7 @@ export function getComposerFriendOptions(
       friend,
       rewind: dailyRewinds.find(
         (rewind) =>
-          rewind.ownerId === friend.id && rewind.dayKey === selectedComposerDay.dayKey,
+          rewind.ownerId === friend.id && rewind.dateIsoString === selectedDay.dateIsoString,
       ),
     }))
     .filter((entry): entry is { friend: Friend; rewind: DailyRewind } => Boolean(entry.rewind))

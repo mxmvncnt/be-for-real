@@ -2,15 +2,15 @@ import type { MultiRewind } from '../types'
 
 type MultiRewindPlayerModalProps = {
   rewind: MultiRewind
-  isRendering: boolean
-  renderError: string | null
+  isGenerating: boolean
+  generateError: string | null
   onClose: () => void
 }
 
 export function MultiRewindPlayerModal({
   rewind,
-  isRendering,
-  renderError,
+  isGenerating,
+  generateError,
   onClose,
 }: MultiRewindPlayerModalProps) {
   return (
@@ -26,7 +26,7 @@ export function MultiRewindPlayerModal({
           </button>
         </div>
 
-        {renderError ? <p className="friends-panel__message">{renderError}</p> : null}
+        {generateError ? <p className="friends-panel__message">{generateError}</p> : null}
 
         {rewind.videoUrl ? (
           <div className="rewind-player__stage">
@@ -34,7 +34,7 @@ export function MultiRewindPlayerModal({
           </div>
         ) : (
           <div className="rewind-player__loading">
-            {isRendering ? 'Compiling split-screen rewind...' : 'Preparing Multi-Rewind...'}
+            {isGenerating ? 'Generating Multi-Rewind...' : 'Preparing Multi-Rewind...'}
           </div>
         )}
 

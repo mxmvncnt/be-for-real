@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageTransitionOverlay } from '../components/PageTransitionOverlay'
 import wallpaper from '../assets/background_rewind.png'
-import { api, type CurrentUser, type Friend, type RewindVideo } from '../lib/api'
-import { compileDailyRewindVideo, compileMultiRewindVideo } from '../lib/rewindCompiler'
+import { api, resolveVideoUrl, type CurrentUser, type Friend, type RewindVideo } from '../lib/api'
 import { DailyRewindsList } from '../features/rewinds/components/DailyRewindsList'
 import { FriendsPanel } from '../features/rewinds/components/FriendsPanel'
 import { MultiRewindComposerModal } from '../features/rewinds/components/MultiRewindComposerModal'
@@ -13,18 +12,22 @@ import { RewindPlayerModal } from '../features/rewinds/components/RewindPlayerMo
 import { RewindsFab } from '../features/rewinds/components/RewindsFab'
 import { RewindsFilterBar } from '../features/rewinds/components/RewindsFilterBar'
 import { RewindsHeader } from '../features/rewinds/components/RewindsHeader'
-import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getComposerFriendOptions } from '../features/rewinds/selectors'
+import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getFriendWithRewindForDay } from '../features/rewinds/selectors'
 import type { DailyRewind, MultiRewind } from '../features/rewinds/types'
+
 
 export function RewindsPage() {
   const [activeTab, setActiveTab] = useState<'rewinds' | 'multi'>('rewinds')
   const [searchTerm, setSearchTerm] = useState('')
   const [friendQuery, setFriendQuery] = useState('')
   const [friends, setFriends] = useState<Friend[]>([])
+  const [incomingRequests, setIncomingRequests] = useState<Friend[]>([])
+  const [outgoingRequests, setOutgoingRequests] = useState<Friend[]>([])
   const [friendResults, setFriendResults] = useState<Friend[]>([])
   const [rewindFeed, setRewindFeed] = useState<RewindVideo[]>([])
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [friendsLoading, setFriendsLoading] = useState(true)
+  const [friendRequestsLoading, setFriendRequestsLoading] = useState(true)
   const [rewindsLoading, setRewindsLoading] = useState(true)
   const [friendSearchLoading, setFriendSearchLoading] = useState(false)
   const [friendActionLoadingId, setFriendActionLoadingId] = useState<string | null>(null)
@@ -32,26 +35,17 @@ export function RewindsPage() {
   const [rewindsError, setRewindsError] = useState<string | null>(null)
   const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>([])
   const [activeRewind, setActiveRewind] = useState<DailyRewind | null>(null)
-  const [compiledRewindUrls, setCompiledRewindUrls] = useState<Record<string, string>>({})
+  const [generatedRewindUrls, setGeneratedRewindUrls] = useState<Record<string, string>>({})
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [selectedComposerDayId, setSelectedComposerDayId] = useState<string | null>(null)
   const [selectedMultiFriendIds, setSelectedMultiFriendIds] = useState<string[]>([])
   const [composerError, setComposerError] = useState<string | null>(null)
   const [activeMultiRewindId, setActiveMultiRewindId] = useState<string | null>(null)
-  const [rewindRenderError, setRewindRenderError] = useState<string | null>(null)
-  const [renderingRewindId, setRenderingRewindId] = useState<string | null>(null)
-  const [multiRenderError, setMultiRenderError] = useState<string | null>(null)
-  const [renderingMultiId, setRenderingMultiId] = useState<string | null>(null)
-  const generatedUrlsRef = useRef<string[]>([])
-
-  useEffect(() => {
-    return () => {
-      for (const url of generatedUrlsRef.current) {
-        URL.revokeObjectURL(url)
-      }
-    }
-  }, [])
+  const [rewindGenerateError, setRewindGenerateError] = useState<string | null>(null)
+  const [generatingRewindId, setGeneratingRewindId] = useState<string | null>(null)
+  const [multiGenerateError, setMultiGenerateError] = useState<string | null>(null)
+  const [generatingMultiId, setGeneratingMultiId] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadRewindFeed() {
@@ -85,32 +79,61 @@ export function RewindsPage() {
     void loadCurrentUser()
   }, [])
 
-  useEffect(() => {
-    async function loadFriends() {
-      setFriendsLoading(true)
-      setFriendError(null)
+  const loadFriends = async () => {
+    setFriendsLoading(true)
+    setFriendError(null)
 
-      try {
-        const nextFriends = await api.getFriends()
-        setFriends(nextFriends)
-      } catch (error) {
-        console.error(error)
-        setFriendError('Could not load your friends.')
-      } finally {
-        setFriendsLoading(false)
-      }
+    try {
+      const nextFriends = await api.getFriends()
+      setFriends(nextFriends)
+    } catch (error) {
+      console.error(error)
+      setFriendError('Could not load your friends.')
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
+
+  const loadFriendRequests = async () => {
+    setFriendRequestsLoading(true)
+    setFriendError(null)
+
+    try {
+      const [received, sent] = await Promise.all([
+        api.getFriendRequestsReceived(),
+        api.getFriendRequestsSent(),
+      ])
+      setIncomingRequests(received)
+      setOutgoingRequests(sent)
+    } catch (error) {
+      console.error(error)
+      setFriendError('Could not load friend requests.')
+    } finally {
+      setFriendRequestsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadFriends()
+    void loadFriendRequests()
+  }, [])
+
+  useEffect(() => {
+    if (!isFriendsModalOpen) {
+      return
     }
 
     void loadFriends()
-  }, [])
+    void loadFriendRequests()
+  }, [isFriendsModalOpen])
 
   const dailyRewinds = useMemo(() => buildDailyRewinds(rewindFeed), [rewindFeed])
   const ownRewinds = useMemo(() => dailyRewinds.filter((rewind) => rewind.isYou), [dailyRewinds])
-  const selectedComposerDay =
+  const selectedDay =
     ownRewinds.find((rewind) => rewind.id === selectedComposerDayId) ?? ownRewinds[0] ?? null
   const composerFriendOptions = useMemo(
-    () => getComposerFriendOptions(friends, dailyRewinds, selectedComposerDay),
-    [friends, dailyRewinds, selectedComposerDay],
+    () => getFriendWithRewindForDay(friends, dailyRewinds, selectedDay),
+    [friends, dailyRewinds, selectedDay],
   )
   const filteredRewinds = useMemo(
     () => filterDailyRewinds(dailyRewinds, searchTerm),
@@ -124,59 +147,85 @@ export function RewindsPage() {
     () => multiRewinds.find((rewind) => rewind.id === activeMultiRewindId) ?? null,
     [multiRewinds, activeMultiRewindId],
   )
-  const isTransitionLoading = Boolean(renderingRewindId || renderingMultiId)
+  const isTransitionLoading = Boolean(generatingRewindId || generatingMultiId)
   const profileName = currentUser?.username ?? window.localStorage.getItem('bfr.username') ?? 'User'
 
   const openRewind = async (rewind: DailyRewind) => {
-    setRewindRenderError(null)
+    setRewindGenerateError(null)
     setActiveRewind(rewind)
 
-    if (compiledRewindUrls[rewind.id] || renderingRewindId === rewind.id) {
+    if (generatedRewindUrls[rewind.id] || generatingRewindId === rewind.id) {
       return
     }
 
-    setRenderingRewindId(rewind.id)
+    setGeneratingRewindId(rewind.id)
 
     try {
-      const videoUrl = await compileDailyRewindVideo(rewind.clips)
-      generatedUrlsRef.current.push(videoUrl)
-      setCompiledRewindUrls((previous) => ({
+      const video = await api.generateMashup(rewind.dateIsoString)
+      const videoUrl = resolveVideoUrl(video)
+      setGeneratedRewindUrls((previous) => ({
         ...previous,
         [rewind.id]: videoUrl,
       }))
     } catch (error) {
       console.error(error)
-      setRewindRenderError('Could not compile this rewind on this device.')
+      setRewindGenerateError('Could not generate this rewind.')
     } finally {
-      setRenderingRewindId(null)
+      setGeneratingRewindId(null)
     }
   }
 
   const closeRewind = () => {
     setActiveRewind(null)
-    setRewindRenderError(null)
+    setRewindGenerateError(null)
   }
 
-  const handleFriendSearch = async () => {
+  useEffect(() => {
     const query = friendQuery.trim()
     if (!query) {
       setFriendResults([])
+      setFriendSearchLoading(false)
       return
     }
 
-    setFriendSearchLoading(true)
+    let ignore = false
+    const shouldShowSpinner = friendResults.length === 0
+    if (shouldShowSpinner) {
+      setFriendSearchLoading(true)
+    }
     setFriendError(null)
 
-    try {
-      const results = await api.searchUsers(query)
-      setFriendResults(results)
-    } catch (error) {
-      console.error(error)
-      setFriendError('Could not search users right now.')
-    } finally {
-      setFriendSearchLoading(false)
+    const timeoutId = window.setTimeout(() => {
+      api
+        .searchUsers(query)
+        .then((results) => {
+          if (ignore) {
+            return
+          }
+
+          const friendIds = new Set(friends.map((friend) => friend.id))
+          const filtered = results.filter((result) => !friendIds.has(result.id))
+          setFriendResults(filtered.slice(0, 5))
+        })
+        .catch((error) => {
+          if (ignore) {
+            return
+          }
+          console.error(error)
+          setFriendError('Could not search users right now.')
+        })
+        .finally(() => {
+          if (!ignore) {
+            setFriendSearchLoading(false)
+          }
+        })
+    }, 300)
+
+    return () => {
+      ignore = true
+      window.clearTimeout(timeoutId)
     }
-  }
+  }, [friendQuery, friends])
 
   const handleAddFriend = async (friend: Friend) => {
     setFriendActionLoadingId(friend.id)
@@ -184,8 +233,8 @@ export function RewindsPage() {
 
     try {
       await api.addFriend(friend.id)
-      setFriends((previous) => {
-        if (previous.some((existingFriend) => existingFriend.id === friend.id)) {
+      setOutgoingRequests((previous) => {
+        if (previous.some((existing) => existing.id === friend.id)) {
           return previous
         }
         return [...previous, friend].sort((left, right) =>
@@ -193,9 +242,34 @@ export function RewindsPage() {
         )
       })
       setFriendResults((previous) => previous.filter((result) => result.id !== friend.id))
+      await Promise.all([loadFriends(), loadFriendRequests()])
     } catch (error) {
       console.error(error)
       setFriendError(`Could not add ${friend.username}.`)
+    } finally {
+      setFriendActionLoadingId(null)
+    }
+  }
+
+  const handleAcceptFriend = async (friend: Friend) => {
+    setFriendActionLoadingId(friend.id)
+    setFriendError(null)
+
+    try {
+      await api.acceptFriendRequest(friend.id)
+      setIncomingRequests((previous) => previous.filter((request) => request.id !== friend.id))
+      setFriends((previous) => {
+        if (previous.some((existing) => existing.id === friend.id)) {
+          return previous
+        }
+        return [...previous, friend].sort((left, right) =>
+          left.username.localeCompare(right.username),
+        )
+      })
+      await Promise.all([loadFriends(), loadFriendRequests()])
+    } catch (error) {
+      console.error(error)
+      setFriendError(`Could not accept ${friend.username}.`)
     } finally {
       setFriendActionLoadingId(null)
     }
@@ -208,6 +282,8 @@ export function RewindsPage() {
     try {
       await api.removeFriend(friend.id)
       setFriends((previous) => previous.filter((existingFriend) => existingFriend.id !== friend.id))
+      setIncomingRequests((previous) => previous.filter((request) => request.id !== friend.id))
+      setOutgoingRequests((previous) => previous.filter((request) => request.id !== friend.id))
       setRewindFeed((previous) => previous.filter((clip) => clip.userId !== friend.id))
       setMultiRewinds((previous) =>
         previous.filter(
@@ -215,6 +291,7 @@ export function RewindsPage() {
             !rewind.participants.some((participant) => participant.ownerId === friend.id),
         ),
       )
+      await Promise.all([loadFriends(), loadFriendRequests()])
     } catch (error) {
       console.error(error)
       setFriendError(`Could not remove ${friend.username}.`)
@@ -225,6 +302,10 @@ export function RewindsPage() {
 
   const isAlreadyFriend = (friendId: string) =>
     friends.some((friend) => friend.id === friendId)
+  const isOutgoingRequest = (friendId: string) =>
+    outgoingRequests.some((friend) => friend.id === friendId)
+  const isIncomingRequest = (friendId: string) =>
+    incomingRequests.some((friend) => friend.id === friendId)
 
   const openComposer = () => {
     setSelectedComposerDayId(ownRewinds[0]?.id ?? null)
@@ -261,7 +342,7 @@ export function RewindsPage() {
   }
 
   const handleCreateMultiRewind = () => {
-    if (!selectedComposerDay) {
+    if (!selectedDay) {
       setComposerError('You need at least one personal rewind day first.')
       return
     }
@@ -281,9 +362,9 @@ export function RewindsPage() {
 
     const participantRewinds = [
       {
-        ownerId: selectedComposerDay.ownerId,
-        ownerName: selectedComposerDay.ownerName,
-        clips: selectedComposerDay.clips,
+        ownerId: selectedDay.ownerId,
+        ownerName: selectedDay.ownerName,
+        clips: selectedDay.clips,
       },
       ...selectedFriends.map((entry) => ({
         ownerId: entry.rewind.ownerId,
@@ -294,10 +375,10 @@ export function RewindsPage() {
 
     const createdRewind: MultiRewind = {
       id: `multi-${Date.now()}`,
-      title: `${profileName}'s ${selectedComposerDay.title
-        .replace(`${selectedComposerDay.ownerName}'s `, '')
+      title: `${profileName}'s ${selectedDay.title
+        .replace(`${selectedDay.ownerName}'s `, '')
         .replace('Rewind', 'Multi-Rewind')}`,
-      dayKey: selectedComposerDay.dayKey,
+      dateIsoString: selectedDay.dateIsoString,
       participants: participantRewinds,
       createdBy: 'You',
       videoUrl: null,
@@ -309,18 +390,18 @@ export function RewindsPage() {
   }
 
   const openMultiRewind = async (rewind: MultiRewind) => {
-    setMultiRenderError(null)
+    setMultiGenerateError(null)
     setActiveMultiRewindId(rewind.id)
 
-    if (rewind.videoUrl || renderingMultiId === rewind.id) {
+    if (rewind.videoUrl || generatingMultiId === rewind.id) {
       return
     }
 
-    setRenderingMultiId(rewind.id)
+    setGeneratingMultiId(rewind.id)
 
     try {
-      const videoUrl = await compileMultiRewindVideo(rewind.participants)
-      generatedUrlsRef.current.push(videoUrl)
+      const video = await api.generateMashup(rewind.dateIsoString)
+      const videoUrl = resolveVideoUrl(video)
       setMultiRewinds((previous) =>
         previous.map((existingRewind) =>
           existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
@@ -328,15 +409,15 @@ export function RewindsPage() {
       )
     } catch (error) {
       console.error(error)
-      setMultiRenderError('Could not compile the Multi-Rewind on this device.')
+      setMultiGenerateError('Could not generate this Multi-Rewind.')
     } finally {
-      setRenderingMultiId(null)
+      setGeneratingMultiId(null)
     }
   }
 
   const closeMultiRewind = () => {
     setActiveMultiRewindId(null)
-    setMultiRenderError(null)
+    setMultiGenerateError(null)
   }
 
   return (
@@ -394,9 +475,9 @@ export function RewindsPage() {
       {activeRewind ? (
         <RewindPlayerModal
           rewind={activeRewind}
-          compiledVideoUrl={compiledRewindUrls[activeRewind.id]}
-          isRendering={renderingRewindId === activeRewind.id}
-          renderError={rewindRenderError}
+          videoUrl={generatedRewindUrls[activeRewind.id]}
+          isGenerating={generatingRewindId === activeRewind.id}
+          generateError={rewindGenerateError}
           onClose={closeRewind}
         />
       ) : null}
@@ -404,8 +485,8 @@ export function RewindsPage() {
       {activeMultiRewind ? (
         <MultiRewindPlayerModal
           rewind={activeMultiRewind}
-          isRendering={renderingMultiId === activeMultiRewind.id}
-          renderError={multiRenderError}
+          isGenerating={generatingMultiId === activeMultiRewind.id}
+          generateError={multiGenerateError}
           onClose={closeMultiRewind}
         />
       ) : null}
@@ -444,12 +525,21 @@ export function RewindsPage() {
               friendQuery={friendQuery}
               friendResults={friendResults}
               friendSearchLoading={friendSearchLoading}
+              friendRequestsLoading={friendRequestsLoading}
               friends={friends}
               friendsLoading={friendsLoading}
+              incomingRequests={incomingRequests}
+              outgoingRequests={outgoingRequests}
               isAlreadyFriend={isAlreadyFriend}
+              isIncomingRequest={isIncomingRequest}
+              isOutgoingRequest={isOutgoingRequest}
+              onTabChange={() => {
+                void loadFriends()
+                void loadFriendRequests()
+              }}
               onAddFriend={handleAddFriend}
+              onAcceptFriend={handleAcceptFriend}
               onFriendQueryChange={setFriendQuery}
-              onFriendSearch={() => void handleFriendSearch()}
               onRemoveFriend={handleRemoveFriend}
             />
           </div>
@@ -462,7 +552,7 @@ export function RewindsPage() {
           composerFriendOptions={composerFriendOptions}
           friends={friends}
           ownRewinds={ownRewinds}
-          selectedComposerDay={selectedComposerDay}
+          selectedComposerDay={selectedDay}
           selectedMultiFriendIds={selectedMultiFriendIds}
           onClose={closeComposer}
           onComposerDayChange={handleComposerDayChange}
