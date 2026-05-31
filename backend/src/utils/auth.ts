@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
-import { db } from "../db/client.js";
-import { sessionsTable } from "../db/schema.js";
+import { eq } from 'drizzle-orm'
+import { db } from '../db/client.js'
+import { sessionsTable } from '../db/schema.js'
 
 export async function getUserIdFromToken(token: string | undefined) {
   if (!token) return null;
@@ -17,7 +17,7 @@ export async function getUserIdFromToken(token: string | undefined) {
 }
 
 export async function getUserIdFromRequest(c: {
-  req: { header: (name: string) => string | undefined };
+	req: { header: (name: string) => string | undefined }
 }) {
-  return getUserIdFromToken(c.req.header("authorization"));
+	return getUserIdFromToken(c.req.header('authorization'))
 }
