@@ -107,7 +107,7 @@ const openApiDoc = {
 				},
 			},
 		},
-		'/uploads/{filename}': {
+		'/videos/{filename}': {
 			get: {
 				summary: 'Serve an uploaded video file',
 				tags: ['Files'],

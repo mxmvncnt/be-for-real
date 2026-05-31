@@ -1,4 +1,4 @@
-import { FormEvent, MouseEvent, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import wallpaper from "../assets/main_wallpaper.jpg";
@@ -7,6 +7,24 @@ import logo from "/logo.png";
 
 export function SignupPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    const token = window.localStorage.getItem("bfr.token");
+    if (!token) return;
+
+    let mounted = true;
+    api
+      .getCurrentUser()
+      .then(() => {
+        if (mounted) navigate("/rewinds");
+      })
+      .catch(() => {
+        window.localStorage.removeItem("bfr.token");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

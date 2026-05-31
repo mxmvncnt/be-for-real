@@ -1,3 +1,4 @@
+import { resolveVideoUrl } from '../../../lib/api'
 import type { MultiRewind } from '../types'
 
 type MultiRewindPlayerModalProps = {
@@ -28,9 +29,15 @@ export function MultiRewindPlayerModal({
 
         {generateError ? <p className="friends-panel__message">{generateError}</p> : null}
 
-        {rewind.videoUrl ? (
+        {rewind.videoFilename ? (
           <div className="rewind-player__stage">
-            <video autoPlay className="rewind-player__video" controls playsInline src={rewind.videoUrl} />
+            <video
+              autoPlay
+              className="rewind-player__video"
+              controls
+              playsInline
+              src={resolveVideoUrl({ filename: rewind.videoFilename })}
+            />
           </div>
         ) : (
           <div className="rewind-player__loading">

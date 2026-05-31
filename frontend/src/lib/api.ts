@@ -44,9 +44,15 @@ export type Video = {
   id: string;
   userId: string;
   createdAt: string;
-  videoUrl: string;
-  filename?: string;
+  filename: string;
   type: VideoType;
+};
+
+export type Song = {
+  id: string;
+  title: string;
+  fileName: string;
+  startTimestamp: string;
 };
 
 export type RewindVideo = Video & {
@@ -54,19 +60,11 @@ export type RewindVideo = Video & {
   isYou: boolean;
 };
 
-export function resolveVideoUrl(video: Pick<Video, "videoUrl" | "filename">) {
-  if (video.videoUrl) {
-    return video.videoUrl;
-  }
-
-  if (video.filename) {
-    return `/uploads/${video.filename}`;
-  }
-
-  return "";
-}
-
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+
+export function resolveVideoUrl(video: Pick<Video, "filename">) {
+  return video.filename ? `${API_BASE_URL}/videos/${video.filename}` : "";
+}
 
 function getAuthHeaders(): Record<string, string> {
   const token = window.localStorage.getItem("bfr.token");
@@ -178,8 +176,9 @@ export const api = {
     request<RewindVideo[]>("/videos/feed", {
       headers: getAuthHeaders(),
     }),
-  logout: () => 
-    request<{ ok:boolean }>("/auth/logout", {
+  getSongs: () => request<Song[]>("/videos/songs"),
+  logout: () =>
+    request<{ ok: boolean }>("/auth/logout", {
       method: "POST",
       headers: getAuthHeaders(),
     }),

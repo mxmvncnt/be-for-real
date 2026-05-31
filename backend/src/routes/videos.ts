@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path, { join } from 'node:path'
 import { Hono } from 'hono'
 import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
@@ -9,6 +9,7 @@ import { getUserIdFromRequest } from '../utils/auth.js'
 import { concatVideos } from '../utils/ffmpeg.js'
 import { tmpdir } from 'node:os'
 import { existsSync } from 'node:fs'
+import { songs } from '../data/songs.js'
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
@@ -20,10 +21,14 @@ type VideoFeedItem = {
 	userId: string
 	username: string
 	createdAt: string
-	videoUrl: string
+	filename: string
 	type: VideoType
 	isYou: boolean
 }
+
+videos.get('/songs', (c) => {
+	return c.json(songs, 200)
+})
 
 function getFileExtension(file: File) {
 	const originalExtension = path.extname(file.name).toLowerCase()
@@ -65,7 +70,7 @@ videos.post('/clips', async (c) => {
 			id: uuid,
 			userId: currentUserId,
 			createdAt,
-			videoUrl: `/uploads/${filename}`,
+			videoUrl: `/videos/${filename}`,
 			filename,
 			type: 'clip',
 		})
@@ -73,7 +78,6 @@ videos.post('/clips', async (c) => {
 			id: videosTable.id,
 			userId: videosTable.userId,
 			createdAt: videosTable.createdAt,
-			videoUrl: videosTable.videoUrl,
 			filename: videosTable.filename,
 			type: videosTable.type,
 		})
@@ -93,7 +97,12 @@ videos.get('/feed', async (c) => {
 	const friendRows = await db
 		.select()
 		.from(friendsTable)
-		.where(or(eq(friendsTable.userId1, currentUserId), eq(friendsTable.userId2, currentUserId)))
+		.where(
+			and(
+				eq(friendsTable.confirmed, 1),
+				or(eq(friendsTable.userId1, currentUserId), eq(friendsTable.userId2, currentUserId)),
+			),
+		)
 
 	const friendIds = friendRows.map((row) =>
 		String(row.userId1) === currentUserId ? String(row.userId2) : String(row.userId1),
@@ -106,7 +115,7 @@ videos.get('/feed', async (c) => {
 			id: videosTable.id,
 			userId: videosTable.userId,
 			createdAt: videosTable.createdAt,
-			videoUrl: videosTable.videoUrl,
+			filename: videosTable.filename,
 			type: videosTable.type,
 		})
 		.from(videosTable)
@@ -132,7 +141,7 @@ videos.get('/feed', async (c) => {
 		userId: String(video.userId),
 		username: usernameById.get(String(video.userId)) ?? 'Unknown',
 		createdAt: video.createdAt.toISOString(),
-		videoUrl: video.videoUrl,
+		filename: video.filename,
 		type: video.type as VideoType,
 		isYou: String(video.userId) === currentUserId,
 	}))
@@ -156,6 +165,7 @@ videos.get('/mashup/:date', async (c) => {
 		.from(videosTable)
 		.where(
 			and(
+				eq(videosTable.userId, userId),
 				gte(videosTable.createdAt, date),
 				lt(videosTable.createdAt, next),
 				eq(videosTable.type, 'clip'),
@@ -184,7 +194,6 @@ videos.get('/mashup/:date', async (c) => {
 			id: videosTable.id,
 			userId: videosTable.userId,
 			createdAt: videosTable.createdAt,
-			videoUrl: videosTable.videoUrl,
 			filename: videosTable.filename,
 			type: videosTable.type,
 		})
@@ -211,7 +220,7 @@ videos.get('/mashup/:date', async (c) => {
 			id: randomUUID(),
 			userId: userId,
 			createdAt: new Date(),
-			videoUrl: `/uploads/${filename}`,
+			videoUrl: `/videos/${filename}`,
 			filename,
 			type: 'mashup',
 		})
@@ -219,12 +228,25 @@ videos.get('/mashup/:date', async (c) => {
 			id: videosTable.id,
 			userId: videosTable.userId,
 			createdAt: videosTable.createdAt,
-			videoUrl: videosTable.videoUrl,
 			filename: videosTable.filename,
 			type: videosTable.type,
 		})
 
 	return c.json(video, 201)
+})
+
+videos.get('/:filename', async (c) => {
+	const filename = c.req.param('filename')
+	const absolutePath = path.join(uploadsDir, filename)
+
+	try {
+		const fileBuffer = await readFile(absolutePath)
+		return c.body(fileBuffer, 200, {
+			'Cache-Control': 'no-store',
+		})
+	} catch {
+		return c.json({ error: 'File not found' }, 404)
+	}
 })
 
 export default videos
