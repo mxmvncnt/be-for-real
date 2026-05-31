@@ -43,6 +43,48 @@ input {
   font: inherit;
 }
 
+input:not([type="checkbox"]):not([type="radio"]) {
+  width: 100%;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"] {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(235, 248, 255, 0.86));
+  box-shadow:
+    inset 0 1px 5px rgba(0, 66, 128, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.72),
+    0 1px 0 rgba(255, 255, 255, 0.56);
+  color: #061929;
+  outline: 0;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    filter 150ms ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus {
+  border-color: rgba(151, 245, 255, 0.96);
+  filter: brightness(1.03);
+  box-shadow:
+    inset 0 1px 5px rgba(0, 66, 128, 0.12),
+    0 0 0 3px rgba(180, 248, 255, 0.42),
+    0 0 14px rgba(74, 207, 255, 0.28);
+}
+
+input::placeholder {
+  color: rgba(8, 25, 41, 0.45);
+}
+
 .auth-shell {
   min-height: 100vh;
   width: 100%;
@@ -599,16 +641,6 @@ button.window-actions__button {
   font-weight: 400;
 }
 
-.auth-field input {
-  width: 100%;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #ffffff, #f0f0f0);
-  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.06);
-}
-
 .auth-message {
   margin: 2px 0 0;
   text-align: center;
@@ -622,9 +654,9 @@ button.window-actions__button {
 .auth-submit {
   position: relative;
   display: block;
-  width: min(100%, 236px);
-  min-height: 84px;
-  margin: 16px auto 6px;
+  width: min(100%, 190px);
+  min-height: 68px;
+  margin: 12px auto 4px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1195,24 +1227,43 @@ button.window-actions__button {
 }
 
 .friends-panel__tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .friends-panel__tab {
-  min-height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(189, 196, 210, 0.8), rgba(132, 142, 170, 0.9));
-  color: rgba(255, 255, 255, 0.82);
+  width: min(44%, 132px);
+  border: 0;
+  background: transparent;
   cursor: pointer;
-  font-weight: 700;
+  padding: 0;
+  opacity: 0.72;
+  filter: saturate(0.78) brightness(0.88);
 }
 
 .friends-panel__tab.is-active {
-  background: linear-gradient(180deg, #b8ff95, #4fd54f);
-  color: #1b4b16;
+  opacity: 1;
+  filter: brightness(1.08) saturate(1.12) drop-shadow(0 3px 5px rgba(43, 153, 52, 0.26));
+}
+
+.friends-panel__tab:not(.is-active):not(:disabled):hover {
+  opacity: 0.88;
+  filter: brightness(1.02) saturate(0.96) drop-shadow(0 0 7px rgba(170, 245, 255, 0.28));
+  box-shadow: none;
+}
+
+.friends-panel__tab.is-active:not(:disabled):hover {
+  opacity: 1;
+  filter: brightness(1.12) saturate(1.16) drop-shadow(0 0 10px rgba(170, 245, 255, 0.44));
+  box-shadow: none;
+}
+
+.friends-panel__tab img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
 }
 
 .friends-panel__search {
@@ -1221,20 +1272,13 @@ button.window-actions__button {
   gap: 10px;
 }
 
-.friends-panel__search input,
 .friend-card button {
-  border: 0;
   border-radius: 10px;
   font: inherit;
 }
 
-.friends-panel__search input {
-  min-height: 36px;
-  padding: 0 12px;
-  background: linear-gradient(180deg, #ffffff, #f0f0f0);
-}
-
 .friend-card button {
+  border: 0;
   min-height: 36px;
   padding: 0 12px;
   background: linear-gradient(180deg, #b8ff95, #4fd54f);
@@ -1407,18 +1451,6 @@ button.window-actions__button {
 .rewinds-search {
   display: grid;
   gap: 6px;
-}
-
-.rewinds-search input {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 249, 255, 0.84));
-  box-shadow:
-    inset 0 1px 4px rgba(0, 66, 128, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.58);
 }
 
 .rewinds-search span {

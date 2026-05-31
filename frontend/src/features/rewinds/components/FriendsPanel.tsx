@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import addFriendsTab from '../../../assets/friends-tab-add.svg'
+import friendsTab from '../../../assets/friends-tab-friends.svg'
 import type { Friend } from '../../../lib/api'
 
 type FriendsPanelProps = {
@@ -128,7 +130,7 @@ export function FriendsPanel({
           aria-selected={activeTab === 'friends'}
           onClick={() => switchTab('friends')}
         >
-          Friends
+          <img src={friendsTab} alt="Friends" />
         </button>
         <button
           className={`friends-panel__tab${activeTab === 'add' ? ' is-active' : ''}`}
@@ -137,7 +139,7 @@ export function FriendsPanel({
           aria-selected={activeTab === 'add'}
           onClick={() => switchTab('add')}
         >
-          Add friend
+          <img src={addFriendsTab} alt="Add friends" />
         </button>
       </div>
 
