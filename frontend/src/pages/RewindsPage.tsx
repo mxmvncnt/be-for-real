@@ -12,7 +12,7 @@ import { RewindPlayerModal } from '../features/rewinds/components/RewindPlayerMo
 import { RewindsFab } from '../features/rewinds/components/RewindsFab'
 import { RewindsFilterBar } from '../features/rewinds/components/RewindsFilterBar'
 import { RewindsHeader } from '../features/rewinds/components/RewindsHeader'
-import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getFriendWithRewindForDay } from '../features/rewinds/selectors'
+import { buildDailyRewinds, buildMultiRewindsFromFeed, filterDailyRewinds, filterMultiRewinds, getFriendWithRewindForDay } from '../features/rewinds/selectors'
 import type { DailyRewind, MultiRewind } from '../features/rewinds/types'
 
 
@@ -33,7 +33,7 @@ export function RewindsPage() {
   const [friendActionLoadingId, setFriendActionLoadingId] = useState<string | null>(null)
   const [friendError, setFriendError] = useState<string | null>(null)
   const [rewindsError, setRewindsError] = useState<string | null>(null)
-  const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>([])
+  const [draftMultiRewinds, setDraftMultiRewinds] = useState<MultiRewind[]>([])
   const [songs, setSongs] = useState<Song[]>([])
   const [songsLoading, setSongsLoading] = useState(true)
   const [songsError, setSongsError] = useState<string | null>(null)
@@ -160,6 +160,16 @@ export function RewindsPage() {
   }, [isFriendsModalOpen])
 
   const dailyRewinds = useMemo(() => buildDailyRewinds(rewindFeed), [rewindFeed])
+  const feedMultiRewinds = useMemo(() => buildMultiRewindsFromFeed(rewindFeed), [rewindFeed])
+  const multiRewinds = useMemo(() => {
+    const syncedFilenames = new Set(
+      feedMultiRewinds.map((rewind) => rewind.videoFilename).filter(Boolean),
+    )
+    const drafts = draftMultiRewinds.filter(
+      (draft) => !draft.videoFilename || !syncedFilenames.has(draft.videoFilename),
+    )
+    return [...drafts, ...feedMultiRewinds]
+  }, [draftMultiRewinds, feedMultiRewinds])
   const ownRewinds = useMemo(() => dailyRewinds.filter((rewind) => rewind.isYou), [dailyRewinds])
   const selectedDay =
     ownRewinds.find((rewind) => rewind.id === selectedComposerDayId) ?? ownRewinds[0] ?? null
@@ -319,7 +329,7 @@ export function RewindsPage() {
       setIncomingRequests((previous) => previous.filter((request) => request.id !== friend.id))
       setOutgoingRequests((previous) => previous.filter((request) => request.id !== friend.id))
       setRewindFeed((previous) => previous.filter((clip) => clip.userId !== friend.id))
-      setMultiRewinds((previous) =>
+      setDraftMultiRewinds((previous) =>
         previous.filter(
           (rewind) =>
             !rewind.participants.some((participant) => participant.ownerId === friend.id),
@@ -427,9 +437,10 @@ export function RewindsPage() {
       musicId: selectedMusicId,
     }
 
-    setMultiRewinds((previous) => [createdRewind, ...previous])
+    setDraftMultiRewinds((previous) => [createdRewind, ...previous])
     setActiveTab('multi')
     closeComposer()
+    void openMultiRewind(createdRewind)
   }
 
   const openMultiRewind = async (rewind: MultiRewind) => {
@@ -447,11 +458,12 @@ export function RewindsPage() {
         friendsIds: rewind.friendIds,
         musicId: rewind.musicId!,
       })
-      setMultiRewinds((previous) =>
+      setDraftMultiRewinds((previous) =>
         previous.map((existingRewind) =>
           existingRewind.id === rewind.id ? { ...existingRewind, videoFilename: video.filename } : existingRewind,
         ),
       )
+      await loadRewindFeed()
     } catch (error) {
       console.error(error)
       setMultiGenerateError('Could not generate this Multi-Rewind.')

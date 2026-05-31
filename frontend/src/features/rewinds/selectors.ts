@@ -6,7 +6,7 @@ export function buildDailyRewinds(rewindFeed: RewindVideo[]): DailyRewind[] {
   const groups = new Map<string, DailyRewind>()
 
   for (const clip of rewindFeed) {
-    if (clip.type !== "clip") {
+    if (clip.type !== 'clip' || isMultiRewindFeedVideo(clip)) {
       continue
     }
 
@@ -50,6 +50,48 @@ export function buildDailyRewinds(rewindFeed: RewindVideo[]): DailyRewind[] {
       (left, right) =>
         new Date(right.clips[right.clips.length - 1]?.createdAt ?? 0).getTime() -
         new Date(left.clips[left.clips.length - 1]?.createdAt ?? 0).getTime(),
+    )
+}
+
+function isMultiRewindFeedVideo(video: RewindVideo) {
+  return video.type === 'multi_rewind' || video.filename.startsWith('multi_rewind_')
+}
+
+export function buildMultiRewindsFromFeed(rewindFeed: RewindVideo[]): MultiRewind[] {
+  return rewindFeed
+    .filter(isMultiRewindFeedVideo)
+    .map((video) => {
+      const createdAt = DateTime.fromISO(video.createdAt)
+      const dateIsoString = createdAt.toISODate() ?? createdAt.toFormat('yyyy-MM-dd')
+      const dayTitle = createdAt.toLocaleString({ month: 'long', day: 'numeric' })
+
+      return {
+        id: video.id,
+        title: `${video.isYou ? 'Your' : `${video.username}'s`} ${dayTitle} Multi-Rewind`,
+        dateIsoString,
+        participants: [
+          {
+            ownerId: video.userId,
+            ownerName: video.isYou ? 'You' : video.username,
+            clips: [
+              {
+                id: video.id,
+                createdAt: video.createdAt,
+                filename: video.filename,
+                timeLabel: createdAt.toLocaleString(DateTime.TIME_SIMPLE),
+              },
+            ],
+          },
+        ],
+        friendIds: [],
+        createdBy: video.isYou ? 'You' : video.username,
+        videoFilename: video.filename,
+      }
+    })
+    .sort(
+      (left, right) =>
+        new Date(right.participants[0]?.clips[0]?.createdAt ?? 0).getTime() -
+        new Date(left.participants[0]?.clips[0]?.createdAt ?? 0).getTime(),
     )
 }
 
