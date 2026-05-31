@@ -326,10 +326,39 @@ const openApiDoc = {
 				},
 			},
 		},
-		'/videos/mashup/{date}': {
-			post: {
-				summary: 'Create a mashup for a date (not implemented)',
+		'/videos/songs': {
+			get: {
+				summary: 'Get available mashup songs',
 				tags: ['Videos'],
+				responses: {
+					'200': {
+						description: 'Song catalog',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'array',
+									items: {
+										type: 'object',
+										properties: {
+											id: { type: 'string' },
+											title: { type: 'string' },
+											fileName: { type: 'string' },
+											startSeconds: { type: 'number' },
+										},
+										required: ['id', 'title', 'fileName', 'startSeconds'],
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		'/videos/mashup/{date}': {
+			get: {
+				summary: 'Create a mashup for a date',
+				tags: ['Videos'],
+				security: [{ TokenAuth: [] }],
 				parameters: [
 					{
 						name: 'date',
@@ -339,7 +368,9 @@ const openApiDoc = {
 					},
 				],
 				responses: {
-					'501': { description: 'Not implemented' },
+					'200': { description: 'Mashup video metadata' },
+					'401': { description: 'Missing or invalid token' },
+					'404': { description: 'No videos for selected date' },
 				},
 			},
 		},
