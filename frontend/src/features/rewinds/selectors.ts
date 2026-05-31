@@ -78,12 +78,12 @@ export function filterMultiRewinds(multiRewinds: MultiRewind[], searchTerm: stri
   )
 }
 
-export function getComposerFriendOptions(
+export function getFriendWithRewindForDay(
   friends: Friend[],
   dailyRewinds: DailyRewind[],
-  selectedComposerDay: DailyRewind | null,
+  selectedDay: DailyRewind | null,
 ) {
-  if (!selectedComposerDay) {
+  if (!selectedDay) {
     return []
   }
 
@@ -92,7 +92,7 @@ export function getComposerFriendOptions(
       friend,
       rewind: dailyRewinds.find(
         (rewind) =>
-          rewind.ownerId === friend.id && rewind.dateIsoString === selectedComposerDay.dateIsoString,
+          rewind.ownerId === friend.id && rewind.dateIsoString === selectedDay.dateIsoString,
       ),
     }))
     .filter((entry): entry is { friend: Friend; rewind: DailyRewind } => Boolean(entry.rewind))

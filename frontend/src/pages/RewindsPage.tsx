@@ -13,7 +13,7 @@ import { RewindPlayerModal } from '../features/rewinds/components/RewindPlayerMo
 import { RewindsFab } from '../features/rewinds/components/RewindsFab'
 import { RewindsFilterBar } from '../features/rewinds/components/RewindsFilterBar'
 import { RewindsHeader } from '../features/rewinds/components/RewindsHeader'
-import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getComposerFriendOptions } from '../features/rewinds/selectors'
+import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getFriendWithRewindForDay } from '../features/rewinds/selectors'
 import type { DailyRewind, MultiRewind } from '../features/rewinds/types'
 
 export function RewindsPage() {
@@ -106,11 +106,11 @@ export function RewindsPage() {
 
   const dailyRewinds = useMemo(() => buildDailyRewinds(rewindFeed), [rewindFeed])
   const ownRewinds = useMemo(() => dailyRewinds.filter((rewind) => rewind.isYou), [dailyRewinds])
-  const selectedComposerDay =
+  const selectedDay =
     ownRewinds.find((rewind) => rewind.id === selectedComposerDayId) ?? ownRewinds[0] ?? null
   const composerFriendOptions = useMemo(
-    () => getComposerFriendOptions(friends, dailyRewinds, selectedComposerDay),
-    [friends, dailyRewinds, selectedComposerDay],
+    () => getFriendWithRewindForDay(friends, dailyRewinds, selectedDay),
+    [friends, dailyRewinds, selectedDay],
   )
   const filteredRewinds = useMemo(
     () => filterDailyRewinds(dailyRewinds, searchTerm),
@@ -261,7 +261,7 @@ export function RewindsPage() {
   }
 
   const handleCreateMultiRewind = () => {
-    if (!selectedComposerDay) {
+    if (!selectedDay) {
       setComposerError('You need at least one personal rewind day first.')
       return
     }
@@ -281,9 +281,9 @@ export function RewindsPage() {
 
     const participantRewinds = [
       {
-        ownerId: selectedComposerDay.ownerId,
-        ownerName: selectedComposerDay.ownerName,
-        clips: selectedComposerDay.clips,
+        ownerId: selectedDay.ownerId,
+        ownerName: selectedDay.ownerName,
+        clips: selectedDay.clips,
       },
       ...selectedFriends.map((entry) => ({
         ownerId: entry.rewind.ownerId,
@@ -294,10 +294,10 @@ export function RewindsPage() {
 
     const createdRewind: MultiRewind = {
       id: `multi-${Date.now()}`,
-      title: `${profileName}'s ${selectedComposerDay.title
-        .replace(`${selectedComposerDay.ownerName}'s `, '')
+      title: `${profileName}'s ${selectedDay.title
+        .replace(`${selectedDay.ownerName}'s `, '')
         .replace('Rewind', 'Multi-Rewind')}`,
-      dateIsoString: selectedComposerDay.dateIsoString,
+      dateIsoString: selectedDay.dateIsoString,
       participants: participantRewinds,
       createdBy: 'You',
       videoUrl: null,
@@ -462,7 +462,7 @@ export function RewindsPage() {
           composerFriendOptions={composerFriendOptions}
           friends={friends}
           ownRewinds={ownRewinds}
-          selectedComposerDay={selectedComposerDay}
+          selectedComposerDay={selectedDay}
           selectedMultiFriendIds={selectedMultiFriendIds}
           onClose={closeComposer}
           onComposerDayChange={handleComposerDayChange}
