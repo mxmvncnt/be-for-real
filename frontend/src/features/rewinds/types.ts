@@ -1,7 +1,7 @@
 export type RewindClip = {
   id: string
   createdAt: string
-  videoUrl: string
+  filename: string
   timeLabel: string
 }
 
@@ -28,5 +28,5 @@ export type MultiRewind = {
   dateIsoString: string
   participants: MultiRewindParticipant[]
   createdBy: string
-  videoUrl: string | null
+  videoFilename: string | null
 }

@@ -28,9 +28,9 @@ export function MultiRewindPlayerModal({
 
         {generateError ? <p className="friends-panel__message">{generateError}</p> : null}
 
-        {rewind.videoUrl ? (
+        {rewind.videoFilename ? (
           <div className="rewind-player__stage">
-            <video autoPlay className="rewind-player__video" controls playsInline src={rewind.videoUrl} />
+            <video autoPlay className="rewind-player__video" controls playsInline src={`/videos/${rewind.videoFilename}`} />
           </div>
         ) : (
           <div className="rewind-player__loading">

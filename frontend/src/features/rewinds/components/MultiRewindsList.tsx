@@ -34,7 +34,7 @@ export function MultiRewindsList({ rewinds, onOpenMultiRewind }: MultiRewindsLis
                     muted
                     playsInline
                     preload="metadata"
-                    src={participant.clips[0]?.videoUrl}
+                    src={participant.clips[0] ? `/videos/${participant.clips[0].filename}` : undefined}
                   />
                 ))}
               </div>

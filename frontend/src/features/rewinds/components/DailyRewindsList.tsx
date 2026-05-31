@@ -40,7 +40,7 @@ export function DailyRewindsList({
                 muted
                 playsInline
                 preload="metadata"
-                src={rewind.clips[0]?.videoUrl}
+                src={rewind.clips[0] ? `/videos/${rewind.clips[0].filename}` : undefined}
               />
               <div className="rewinds-card__copy">
                 <strong>{rewind.isYou ? 'Your rewind' : `${rewind.ownerName}'s rewind`}</strong>

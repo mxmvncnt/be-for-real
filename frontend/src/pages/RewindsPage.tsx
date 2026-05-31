@@ -381,7 +381,7 @@ export function RewindsPage() {
       dateIsoString: selectedDay.dateIsoString,
       participants: participantRewinds,
       createdBy: 'You',
-      videoUrl: null,
+      videoFilename: null,
     }
 
     setMultiRewinds((previous) => [createdRewind, ...previous])
@@ -393,7 +393,7 @@ export function RewindsPage() {
     setMultiGenerateError(null)
     setActiveMultiRewindId(rewind.id)
 
-    if (rewind.videoUrl || generatingMultiId === rewind.id) {
+    if (rewind.videoFilename || generatingMultiId === rewind.id) {
       return
     }
 
@@ -401,10 +401,9 @@ export function RewindsPage() {
 
     try {
       const video = await api.generateMashup(rewind.dateIsoString)
-      const videoUrl = resolveVideoUrl(video)
       setMultiRewinds((previous) =>
         previous.map((existingRewind) =>
-          existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
+          existingRewind.id === rewind.id ? { ...existingRewind, videoFilename: video.filename } : existingRewind,
         ),
       )
     } catch (error) {

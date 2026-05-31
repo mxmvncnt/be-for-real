@@ -32,7 +32,7 @@ export function buildDailyRewinds(rewindFeed: RewindVideo[]): DailyRewind[] {
     rewind.clips.push({
       id: clip.id,
       createdAt: clip.createdAt,
-      videoUrl: clip.videoUrl,
+		filename: clip.filename,
       timeLabel: createdAt.toLocaleString(DateTime.TIME_SIMPLE),
     })
   }

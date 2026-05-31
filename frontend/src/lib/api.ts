@@ -44,8 +44,7 @@ export type Video = {
   id: string;
   userId: string;
   createdAt: string;
-  videoUrl: string;
-  filename?: string;
+  filename: string;
   type: VideoType;
 };
 
@@ -54,16 +53,8 @@ export type RewindVideo = Video & {
   isYou: boolean;
 };
 
-export function resolveVideoUrl(video: Pick<Video, "videoUrl" | "filename">) {
-  if (video.videoUrl) {
-    return video.videoUrl;
-  }
-
-  if (video.filename) {
-    return `/uploads/${video.filename}`;
-  }
-
-  return "";
+export function resolveVideoUrl(video: Pick<Video, "filename">) {
+  return video.filename ? `/videos/${video.filename}` : "";
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
