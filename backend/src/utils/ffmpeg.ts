@@ -6,8 +6,8 @@ ffmpeg.setFfmpegPath(ffmpegPath.path)
 export function concatVideos(listPath: string, outputPath: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		ffmpeg()
+			.inputOptions(['-f', 'concat', '-safe', '0'])
 			.input(listPath)
-			.inputOptions(['-f concat', '-safe 0'])
 			.outputOptions(['-c:v libx264', '-pix_fmt yuv420p'])
 			.noAudio()
 			.output(outputPath)
