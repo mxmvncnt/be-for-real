@@ -422,10 +422,10 @@ export function RewindsPage() {
               <h2 id="friends-modal-title">Friends</h2>
               <div className="window-actions">
                 <span className="window-actions__button" aria-hidden="true">
-                  -
+                  {'\u2500'}
                 </span>
                 <span className="window-actions__button" aria-hidden="true">
-                  □
+                  {'\u25a1'}
                 </span>
                 <button
                   aria-label="Close friends"
@@ -433,7 +433,7 @@ export function RewindsPage() {
                   type="button"
                   onClick={() => setIsFriendsModalOpen(false)}
                 >
-                  X
+                  {'\u2716'}
                 </button>
               </div>
             </div>

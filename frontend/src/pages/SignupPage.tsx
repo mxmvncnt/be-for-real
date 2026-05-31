@@ -43,7 +43,7 @@ export function SignupPage() {
       window.localStorage.setItem("bfr.token", token);
       window.localStorage.setItem("bfr.email", email);
       window.localStorage.setItem("bfr.username", username);
-      navigate("/camera");
+      navigate("/rewinds");
     } catch (requestError) {
       console.error(requestError);
       setError("Signup failed. Try a different email or username.");
