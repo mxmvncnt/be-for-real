@@ -43,6 +43,7 @@ export function RewindsPage() {
   const [renderingRewindId, setRenderingRewindId] = useState<string | null>(null)
   const [multiRenderError, setMultiRenderError] = useState<string | null>(null)
   const [renderingMultiId, setRenderingMultiId] = useState<string | null>(null)
+  const [multiUploadError, setMultiUploadError] = useState<string | null>(null)
   const generatedUrlsRef = useRef<string[]>([])
 
   useEffect(() => {
@@ -310,6 +311,7 @@ export function RewindsPage() {
 
   const openMultiRewind = async (rewind: MultiRewind) => {
     setMultiRenderError(null)
+    setMultiUploadError(null)
     setActiveMultiRewindId(rewind.id)
 
     if (rewind.videoUrl || renderingMultiId === rewind.id) {
@@ -326,6 +328,14 @@ export function RewindsPage() {
           existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
         ),
       )
+
+      try {
+        const compiledBlob = await blobFromObjectUrl(videoUrl)
+        await api.uploadMashup(compiledBlob, new Date().toISOString())
+      } catch (uploadError) {
+        console.error(uploadError)
+        setMultiUploadError('Multi-Rewind rendered locally, but backend upload is not ready yet.')
+      }
     } catch (error) {
       console.error(error)
       setMultiRenderError('Could not compile the Multi-Rewind on this device.')
@@ -337,6 +347,7 @@ export function RewindsPage() {
   const closeMultiRewind = () => {
     setActiveMultiRewindId(null)
     setMultiRenderError(null)
+    setMultiUploadError(null)
   }
 
   return (
@@ -405,7 +416,7 @@ export function RewindsPage() {
         <MultiRewindPlayerModal
           rewind={activeMultiRewind}
           isRendering={renderingMultiId === activeMultiRewind.id}
-          renderError={multiRenderError}
+          renderError={multiRenderError ?? multiUploadError}
           onClose={closeMultiRewind}
         />
       ) : null}
@@ -472,4 +483,9 @@ export function RewindsPage() {
       ) : null}
     </>
   )
+}
+
+async function blobFromObjectUrl(objectUrl: string) {
+  const response = await fetch(objectUrl)
+  return response.blob()
 }
