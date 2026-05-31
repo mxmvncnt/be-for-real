@@ -30,7 +30,7 @@ async function getCurrentUserId(token: string | undefined) {
     .where(eq(sessionsTable.token, token))
     .limit(1)
 
-  if (!sessionRows || sessionRows.length === 0) {
+  if (sessionRows.length === 0) {
     return null
   }
 
@@ -56,8 +56,7 @@ function getFileExtension(file: File) {
 }
 
 videos.post('/clips', async (c) => {
-  const token = c.req.header('authorization')
-  const currentUserId = await getCurrentUserId(token)
+  const currentUserId = await getCurrentUserId(c.req.header('authorization'))
   if (!currentUserId) {
     return c.json({ error: 'Invalid or expired token' }, 401)
   }
@@ -74,7 +73,6 @@ videos.post('/clips', async (c) => {
   const extension = getFileExtension(file)
   const filename = `${randomUUID()}${extension}`
   const absoluteFilePath = path.join(uploadsDir, filename)
-  const videoUrl = `/uploads/${filename}`
   const createdAtValue = String(formData.get('createdAt') ?? '')
   const createdAt = createdAtValue ? new Date(createdAtValue) : new Date()
 
@@ -91,7 +89,7 @@ videos.post('/clips', async (c) => {
       id: randomUUID(),
       userId: currentUserId,
       createdAt,
-      videoUrl,
+      videoUrl: `/uploads/${filename}`,
       filename,
       type: 'clip',
     })
@@ -108,8 +106,7 @@ videos.post('/clips', async (c) => {
 })
 
 videos.get('/feed', async (c) => {
-  const token = c.req.header('authorization')
-  const currentUserId = await getCurrentUserId(token)
+  const currentUserId = await getCurrentUserId(c.req.header('authorization'))
   if (!currentUserId) {
     return c.json({ error: 'Invalid or expired token' }, 401)
   }
@@ -169,8 +166,14 @@ videos.get('/feed', async (c) => {
   return c.json(feed, 200)
 })
 
-videos.post('/mashup/:date', async (c) => {
-  return c.json({ message: 'Mashup functionality not implemented yet' }, 501)
+videos.post('/mashup/:date', async () => {
+  return new Response(
+    JSON.stringify({ message: 'Mashup functionality not implemented yet' }),
+    {
+      status: 501,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
 })
 
 export default videos

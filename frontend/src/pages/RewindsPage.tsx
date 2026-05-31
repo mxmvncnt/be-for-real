@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type Friend, type RewindVideo } from '../lib/api'
 import { compileDailyRewindVideo, compileMultiRewindVideo } from '../lib/rewindCompiler'
 import wallpaper from '../assets/main_wallpaper.jpg'
-import logo from '../assets/logo.png'
+import logo from '/logo.png'
 
 type RewindClip = {
   id: string
