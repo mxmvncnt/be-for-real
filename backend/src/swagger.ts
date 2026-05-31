@@ -13,6 +13,8 @@ const openApiDoc = {
     { name: "Auth", description: "Authentication" },
     { name: "Users", description: "User profile and friends" },
     { name: "Videos", description: "Video upload and feeds" },
+    { name: "Files", description: "Static file delivery" },
+    { name: "System", description: "Service health and diagnostics" },
   ],
   components: {
     securitySchemes: {
@@ -83,6 +85,73 @@ const openApiDoc = {
         security: [{ TokenAuth: [] }],
         responses: {
           "200": { description: "Session removed" },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
+    "/": {
+      get: {
+        summary: "Root hello",
+        tags: ["System"],
+        responses: {
+          "200": { description: "Plain text greeting" },
+        },
+      },
+    },
+    "/swagger/health": {
+      get: {
+        summary: "Swagger health",
+        tags: ["System"],
+        responses: {
+          "200": { description: "OK" },
+        },
+      },
+    },
+    "/uploads/{filename}": {
+      get: {
+        summary: "Serve an uploaded video file",
+        tags: ["Files"],
+        parameters: [
+          {
+            name: "filename",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": { description: "Video file" },
+          "404": { description: "File not found" },
+        },
+      },
+    },
+    "/user/me": {
+      get: {
+        summary: "Get the authenticated user's profile",
+        tags: ["Users"],
+        security: [{ TokenAuth: [] }],
+        responses: {
+          "200": { description: "User profile" },
+          "401": { description: "Missing or invalid token" },
+          "404": { description: "User not found" },
+        },
+      },
+    },
+    "/user/search": {
+      get: {
+        summary: "Search users by username or email",
+        tags: ["Users"],
+        security: [{ TokenAuth: [] }],
+        parameters: [
+          {
+            name: "q",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": { description: "Search results" },
           "401": { description: "Missing or invalid token" },
         },
       },
@@ -198,6 +267,59 @@ const openApiDoc = {
         responses: {
           "200": { description: "List of clips" },
           "401": { description: "Missing or invalid token" },
+        },
+      },
+      post: {
+        summary: "Upload a clip",
+        tags: ["Videos"],
+        security: [{ TokenAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: {
+                  video: { type: "string", format: "binary" },
+                  createdAt: { type: "string", format: "date-time" },
+                },
+                required: ["video"],
+              },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Uploaded" },
+          "400": { description: "Missing or invalid payload" },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
+    "/videos/feed": {
+      get: {
+        summary: "Get the video feed",
+        tags: ["Videos"],
+        security: [{ TokenAuth: [] }],
+        responses: {
+          "200": { description: "Feed" },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
+    "/videos/mashup/{date}": {
+      post: {
+        summary: "Create a mashup for a date (not implemented)",
+        tags: ["Videos"],
+        parameters: [
+          {
+            name: "date",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "501": { description: "Not implemented" },
         },
       },
     },
