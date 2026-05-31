@@ -198,10 +198,8 @@ videos.get('/mashup/:date', async (c) => {
 
 	// Only run the video edit if the output file isn't already on disk.
 	if (!existsSync(outputFile)) {
-		const filePaths = sorted.map(
-			(video) => `file ${join(uploadsDir, video.filename).replaceAll('\\', '/')}`,
-		)
-		const listPath = join(tmpdir(), `${hash}.txt`).replaceAll('\\', '/')
+		const filePaths = sorted.map((video) => `file "${join(uploadsDir, video.filename)}"`)
+		const listPath = join(tmpdir(), `${hash}.txt`)
 		const manifest = filePaths.join('\n')
 		await writeFile(listPath, manifest, 'utf8')
 		await concatVideos(listPath, outputFile)
