@@ -63,7 +63,7 @@ videos.post('/clips', async (c) => {
 			id: randomUUID(),
 			userId: currentUserId,
 			createdAt,
-			videoUrl: ``,
+			videoUrl: filename,
 			filename,
 			type: 'clip',
 		})
@@ -154,6 +154,10 @@ videos.get('/mashup/:date', async (c) => {
 		.from(videosTable)
 		.where(and(gte(videosTable.createdAt, date), lt(videosTable.createdAt, next)))
 
+	if (videos.length <= 0) {
+		return c.json('no videos for selected date', 404)
+	}
+
 	const filePaths = videos.map((video) => `file ${uploadsDir}/${video.filename}`)
 
 	const uuid = randomUUID()
@@ -170,7 +174,7 @@ videos.get('/mashup/:date', async (c) => {
 			id: randomUUID(),
 			userId: userId,
 			createdAt: new Date(),
-			videoUrl: ``,
+			videoUrl: filename,
 			filename,
 			type: 'clip',
 		})
