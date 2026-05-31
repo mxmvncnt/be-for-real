@@ -31,6 +31,10 @@ videos.get('/songs', (c) => {
 	return c.json(songs, 200)
 })
 
+videos.get('/music', (c) => {
+	return c.json(songs, 200)
+})
+
 function getFileExtension(file: File) {
 	const originalExtension = path.extname(file.name).toLowerCase()
 	if (originalExtension) {

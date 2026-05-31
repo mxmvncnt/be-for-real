@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageTransitionOverlay } from '../components/PageTransitionOverlay'
 import wallpaper from '../assets/background_rewind.png'
-import { api, resolveVideoUrl, type CurrentUser, type Friend, type RewindVideo } from '../lib/api'
+import { api, resolveVideoUrl, type CurrentUser, type Friend, type RewindVideo, type Song } from '../lib/api'
 import { DailyRewindsList } from '../features/rewinds/components/DailyRewindsList'
 import { FriendsPanel } from '../features/rewinds/components/FriendsPanel'
 import { MultiRewindComposerModal } from '../features/rewinds/components/MultiRewindComposerModal'
@@ -34,12 +34,16 @@ export function RewindsPage() {
   const [friendError, setFriendError] = useState<string | null>(null)
   const [rewindsError, setRewindsError] = useState<string | null>(null)
   const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>([])
+  const [songs, setSongs] = useState<Song[]>([])
+  const [songsLoading, setSongsLoading] = useState(true)
+  const [songsError, setSongsError] = useState<string | null>(null)
   const [activeRewind, setActiveRewind] = useState<DailyRewind | null>(null)
   const [generatedRewindUrls, setGeneratedRewindUrls] = useState<Record<string, string>>({})
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [selectedComposerDayId, setSelectedComposerDayId] = useState<string | null>(null)
   const [selectedMultiFriendIds, setSelectedMultiFriendIds] = useState<string[]>([])
+  const [selectedMusicId, setSelectedMusicId] = useState<string | null>(null)
   const [composerError, setComposerError] = useState<string | null>(null)
   const [activeMultiRewindId, setActiveMultiRewindId] = useState<string | null>(null)
   const [rewindGenerateError, setRewindGenerateError] = useState<string | null>(null)
@@ -77,6 +81,26 @@ export function RewindsPage() {
     }
 
     void loadCurrentUser()
+  }, [])
+
+  useEffect(() => {
+    async function loadSongs() {
+      setSongsLoading(true)
+      setSongsError(null)
+
+      try {
+        const availableSongs = await api.getSongs()
+        setSongs(availableSongs)
+        setSelectedMusicId((previous) => previous ?? availableSongs[0]?.id ?? null)
+      } catch (error) {
+        console.error(error)
+        setSongsError('Could not load music list.')
+      } finally {
+        setSongsLoading(false)
+      }
+    }
+
+    void loadSongs()
   }, [])
 
   const loadFriends = async () => {
@@ -312,6 +336,7 @@ export function RewindsPage() {
   const openComposer = () => {
     setSelectedComposerDayId(ownRewinds[0]?.id ?? null)
     setSelectedMultiFriendIds([])
+    setSelectedMusicId((previous) => previous ?? songs[0]?.id ?? null)
     setComposerError(null)
     setIsComposerOpen(true)
   }
@@ -320,6 +345,7 @@ export function RewindsPage() {
     setIsComposerOpen(false)
     setSelectedComposerDayId(null)
     setSelectedMultiFriendIds([])
+    setSelectedMusicId(null)
     setComposerError(null)
   }
 
@@ -335,7 +361,7 @@ export function RewindsPage() {
         return previous.filter((existingId) => existingId !== friendId)
       }
 
-      if (previous.length >= 5) {
+      if (previous.length >= 4) {
         return previous
       }
 
@@ -351,6 +377,11 @@ export function RewindsPage() {
 
     if (selectedMultiFriendIds.length === 0) {
       setComposerError('Pick at least one friend to create a Multi-Rewind.')
+      return
+    }
+
+    if (!selectedMusicId) {
+      setComposerError('Pick a song for the Multi-Rewind.')
       return
     }
 
@@ -384,6 +415,7 @@ export function RewindsPage() {
       participants: participantRewinds,
       createdBy: 'You',
       videoFilename: null,
+      musicId: selectedMusicId,
     }
 
     setMultiRewinds((previous) => [createdRewind, ...previous])
@@ -403,7 +435,8 @@ export function RewindsPage() {
 
     try {
       const video = await api.generateMashup(rewind.dateIsoString, {
-        userId: rewind.participants[0]?.ownerId ?? "",
+        userId: rewind.participants[0]?.ownerId ?? '',
+        musicId: rewind.musicId ?? undefined,
         friendsIds: rewind.participants.slice(1).map((participant) => participant.ownerId),
       })
       setMultiRewinds((previous) =>
@@ -556,11 +589,16 @@ export function RewindsPage() {
           composerFriendOptions={composerFriendOptions}
           friends={friends}
           ownRewinds={ownRewinds}
+          songs={songs}
+          songsError={songsError}
+          songsLoading={songsLoading}
           selectedComposerDay={selectedDay}
           selectedMultiFriendIds={selectedMultiFriendIds}
+          selectedMusicId={selectedMusicId}
           onClose={closeComposer}
           onComposerDayChange={handleComposerDayChange}
           onCreate={handleCreateMultiRewind}
+          onSelectMusic={setSelectedMusicId}
           onToggleFriend={toggleMultiFriend}
         />
       ) : null}
