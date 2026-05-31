@@ -130,7 +130,7 @@ videos.get('/feed', async (c) => {
 
   const visibleUserIds = [currentUserId, ...friendIds]
 
-  const videos = await db
+  const feedVideos = await db
     .select({
       id: videosTable.id,
       userId: videosTable.userId,
@@ -142,7 +142,7 @@ videos.get('/feed', async (c) => {
     .where(inArray(videosTable.userId, visibleUserIds))
     .orderBy(desc(videosTable.createdAt))
 
-  if (videos.length === 0) {
+  if (feedVideos.length === 0) {
     return c.json([] satisfies VideoFeedItem[], 200)
   }
 
@@ -156,7 +156,7 @@ videos.get('/feed', async (c) => {
 
   const usernameById = new Map(users.map((user) => [String(user.id), user.username]))
 
-  const feed: VideoFeedItem[] = videos.map((video) => ({
+  const feed: VideoFeedItem[] = feedVideos.map((video) => ({
     id: String(video.id),
     userId: String(video.userId),
     username: usernameById.get(String(video.userId)) ?? 'Unknown',

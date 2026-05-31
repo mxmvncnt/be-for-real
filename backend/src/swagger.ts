@@ -9,6 +9,11 @@ const openApiDoc = {
     version: "1.0.0",
     description: "API documentation for your service",
   },
+  tags: [
+    { name: "Auth", description: "Authentication" },
+    { name: "Users", description: "User profile and friends" },
+    { name: "Videos", description: "Video upload and feeds" },
+  ],
   components: {
     securitySchemes: {
       TokenAuth: {
@@ -24,6 +29,7 @@ const openApiDoc = {
     "/auth/register": {
       post: {
         summary: "Register a new user",
+        tags: ["Auth"],
         requestBody: {
           required: true,
           content: {
@@ -48,6 +54,7 @@ const openApiDoc = {
     "/auth/login": {
       post: {
         summary: "Login a user",
+        tags: ["Auth"],
         requestBody: {
           required: true,
           content: {
@@ -72,6 +79,7 @@ const openApiDoc = {
     "/user/{friendId}/add": {
       post: {
         summary: "Add a friend for the authenticated user",
+        tags: ["Users"],
         security: [{ TokenAuth: [] }],
         parameters: [
           {
@@ -95,6 +103,7 @@ const openApiDoc = {
     "/user/{friendId}/remove": {
       post: {
         summary: "Remove a friend for the authenticated user",
+        tags: ["Users"],
         security: [{ TokenAuth: [] }],
         parameters: [
           {
@@ -117,6 +126,7 @@ const openApiDoc = {
     "/user/friends": {
       get: {
         summary: "Get friends of the authenticated user",
+        tags: ["Users"],
         security: [{ TokenAuth: [] }],
         responses: {
           "200": {
@@ -142,32 +152,99 @@ const openApiDoc = {
         },
       },
     },
-    "/videos/clips/{date}": {
-      post: {
-        summary: "Create clips for a date",
-        parameters: [
-          {
-            name: "date",
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-          },
-        ],
-        responses: { "501": { description: "Not implemented" } },
+    "/videos/clips": {
+      get: {
+        summary: "Get all clips from friends",
+        tags: ["Videos"],
+        security: [{ TokenAuth: [] }],
+        responses: {
+          "200": { description: "List of clips" },
+          "401": { description: "Missing or invalid token" },
+        },
       },
     },
-    "/videos/mashup/{date}": {
-      post: {
-        summary: "Create mashup for a date",
+    "/videos/clips/{id}": {
+      get: {
+        summary: "Get all clips from a specific user",
+        tags: ["Videos"],
+        security: [{ TokenAuth: [] }],
         parameters: [
           {
-            name: "date",
+            name: "id",
             in: "path",
             required: true,
-            schema: { type: "string" },
+            schema: { type: "string", format: "uuid" },
           },
         ],
-        responses: { "501": { description: "Not implemented" } },
+        responses: {
+          "200": { description: "List of clips" },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
+    "/videos/mashups": {
+      get: {
+        summary: "Get all mashups from friends",
+        tags: ["Videos"],
+        security: [{ TokenAuth: [] }],
+        responses: {
+          "200": { description: "List of mashups" },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
+    "/videos/mashups/{id}": {
+      get: {
+        summary: "Get all mashups from a specific user",
+        tags: ["Videos"],
+        security: [{ TokenAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": { description: "List of mashups" },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
+    "/videos/upload": {
+      post: {
+        summary: "Upload a 5s clip (stored on server)",
+        tags: ["Videos"],
+        security: [{ TokenAuth: [] }],
+        parameters: [
+          {
+            name: "x-filename",
+            in: "header",
+            required: false,
+            schema: { type: "string" },
+            description: "Optional filename for the uploaded video",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "video/webm": {
+              schema: { type: "string", format: "binary" },
+            },
+            "video/mp4": {
+              schema: { type: "string", format: "binary" },
+            },
+            "application/octet-stream": {
+              schema: { type: "string", format: "binary" },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Uploaded (returns id and createdAt)" },
+          "400": { description: "Empty upload" },
+          "401": { description: "Missing or invalid token" },
+        },
       },
     },
   },
