@@ -13,13 +13,18 @@ app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
 
-app.get('/uploads/:filename', async (c) => {
-  const filename = c.req.param('filename')
-  const absolutePath = path.resolve(process.cwd(), 'uploads', filename)
+app.get('/uploads/*', async (c) => {
+  const relativePath = c.req.path.replace(/^\/uploads\//, '')
+  const uploadsRoot = path.resolve(process.cwd(), 'uploads')
+  const absolutePath = path.resolve(uploadsRoot, relativePath)
+
+  if (!absolutePath.startsWith(uploadsRoot)) {
+    return c.json({ error: 'File not found' }, 404)
+  }
 
   try {
     const fileBuffer = await readFile(absolutePath)
-    const extension = path.extname(filename).toLowerCase()
+    const extension = path.extname(relativePath).toLowerCase()
     const contentType =
       extension === '.mp4'
         ? 'video/mp4'

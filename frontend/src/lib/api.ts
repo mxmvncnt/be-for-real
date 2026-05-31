@@ -38,6 +38,11 @@ export type RewindVideo = {
   isYou: boolean
 }
 
+export type MultiRewindParticipantPayload = {
+  ownerId: string
+  clipIds: string[]
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 function getAuthHeaders(): Record<string, string> {
@@ -115,5 +120,17 @@ export const api = {
   getRewindFeed: () =>
     request<RewindVideo[]>('/videos/feed', {
       headers: getAuthHeaders(),
+    }),
+  renderRewind: (clipIds: string[]) =>
+    request<{ videoUrl: string }>('/videos/rewinds/render', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ clipIds }),
+    }),
+  renderMultiRewind: (participants: MultiRewindParticipantPayload[]) =>
+    request<{ videoUrl: string }>('/videos/multi-rewinds/render', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ participants }),
     }),
 }

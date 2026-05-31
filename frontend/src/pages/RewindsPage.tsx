@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Friend, type RewindVideo } from '../lib/api'
-import { compileDailyRewindVideo, compileMultiRewindVideo } from '../lib/rewindCompiler'
 import wallpaper from '../assets/main_wallpaper.jpg'
 import logo from '/logo.png'
 
@@ -60,15 +59,6 @@ export function RewindsPage() {
   const [renderingRewindId, setRenderingRewindId] = useState<string | null>(null)
   const [multiRenderError, setMultiRenderError] = useState<string | null>(null)
   const [renderingMultiId, setRenderingMultiId] = useState<string | null>(null)
-  const generatedUrlsRef = useRef<string[]>([])
-
-  useEffect(() => {
-    return () => {
-      for (const url of generatedUrlsRef.current) {
-        URL.revokeObjectURL(url)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     async function loadRewindFeed() {
@@ -204,8 +194,7 @@ export function RewindsPage() {
     setRenderingRewindId(rewind.id)
 
     try {
-      const videoUrl = await compileDailyRewindVideo(rewind.clips)
-      generatedUrlsRef.current.push(videoUrl)
+      const { videoUrl } = await api.renderRewind(rewind.clips.map((clip) => clip.id))
       setCompiledRewindUrls((previous) => ({
         ...previous,
         [rewind.id]: videoUrl,
@@ -393,8 +382,12 @@ export function RewindsPage() {
     setRenderingMultiId(rewind.id)
 
     try {
-      const videoUrl = await compileMultiRewindVideo(rewind.participants)
-      generatedUrlsRef.current.push(videoUrl)
+      const { videoUrl } = await api.renderMultiRewind(
+        rewind.participants.map((participant) => ({
+          ownerId: participant.ownerId,
+          clipIds: participant.clips.map((clip) => clip.id),
+        })),
+      )
       setMultiRewinds((previous) =>
         previous.map((existingRewind) =>
           existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
