@@ -3,6 +3,10 @@ import { friendsTable } from '../db/schema.js'
 import { and, eq, or } from 'drizzle-orm'
 
 export default async function areUsersFriends(userId1: string, userId2: string): Promise<boolean> {
+	if (userId1 === userId2) {
+		return true
+	}
+
 	const friendRows = await db
 		.select()
 		.from(friendsTable)

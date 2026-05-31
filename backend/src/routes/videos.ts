@@ -158,7 +158,7 @@ videos.get('/mashup/:date/:userId', async (c) => {
 		return c.json({ error: 'Invalid or expired token' }, 401)
 	}
 
-	if (await areUsersFriends(currentUserId, userId)) {
+	if (!(await areUsersFriends(currentUserId, userId))) {
 		return c.json({ error: 'you are not friend with this user' }, 401)
 	}
 
