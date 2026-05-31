@@ -354,9 +354,9 @@ const openApiDoc = {
 				},
 			},
 		},
-		'/videos/mashup/{date}': {
+		'/videos/mashup/{date}/{userId}': {
 			get: {
-				summary: 'Create a mashup for a date',
+				summary: 'Create or retrieve a mashup for a user on a date',
 				tags: ['Videos'],
 				security: [{ TokenAuth: [] }],
 				parameters: [
@@ -364,13 +364,22 @@ const openApiDoc = {
 						name: 'date',
 						in: 'path',
 						required: true,
-						schema: { type: 'string' },
+						schema: { type: 'string', format: 'date-time' },
+						description: 'Start of the day (ISO 8601) to mash up clips from',
+					},
+					{
+						name: 'userId',
+						in: 'path',
+						required: true,
+						schema: { type: 'string', format: 'uuid' },
+						description: 'User whose clips should be included in the mashup',
 					},
 				],
 				responses: {
-					'200': { description: 'Mashup video metadata' },
-					'401': { description: 'Missing or invalid token' },
-					'404': { description: 'No videos for selected date' },
+					'200': { description: 'Existing mashup returned' },
+					'201': { description: 'Mashup created' },
+					'401': { description: 'Missing or invalid token, or not friends with user' },
+					'404': { description: 'No clips for selected date' },
 				},
 			},
 		},
