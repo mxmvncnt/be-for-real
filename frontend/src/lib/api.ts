@@ -38,15 +38,33 @@ export type CurrentUser = {
   profilePicUrl?: string | null;
 };
 
-export type RewindVideo = {
+export type VideoType = "clip" | "mashup";
+
+export type Video = {
   id: string;
   userId: string;
-  username: string;
   createdAt: string;
   videoUrl: string;
-  type: string | null;
+  filename?: string;
+  type: VideoType;
+};
+
+export type RewindVideo = Video & {
+  username: string;
   isYou: boolean;
 };
+
+export function resolveVideoUrl(video: Pick<Video, "videoUrl" | "filename">) {
+  if (video.videoUrl) {
+    return video.videoUrl;
+  }
+
+  if (video.filename) {
+    return `/uploads/${video.filename}`;
+  }
+
+  return "";
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -126,34 +144,22 @@ export const api = {
 
     return response.json() as Promise<RewindVideo>;
   },
-  uploadMashup: async (video: Blob, createdAt: string) => {
-    const formData = new FormData();
-    formData.append("video", video, `mashup-${createdAt}.webm`);
-    formData.append("createdAt", createdAt);
-
-    const response = await fetch(`${API_BASE_URL}/videos/mashup`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
-    }
-
-    return response.json() as Promise<RewindVideo>;
-  },
-  generateMashup: async (date: DateTime) => {
-    const response = await fetch(`${API_BASE_URL}/videos/mashup/${date.startOf('day').toISO()}`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+  generateMashup: async (dateIsoString: string) => {
+    const date =
+      DateTime.fromISO(dateIsoString).startOf("day").toISO() ?? dateIsoString;
+    const response = await fetch(
+      `${API_BASE_URL}/videos/mashup/${encodeURIComponent(date)}`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(),
+      },
+    );
 
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
     }
 
-    return response.json() as Promise<RewindVideo>;
+    return response.json() as Promise<Video>;
   },
   getRewindFeed: () =>
     request<RewindVideo[]>("/videos/feed", {

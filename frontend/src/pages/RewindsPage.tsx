@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageTransitionOverlay } from '../components/PageTransitionOverlay'
 import wallpaper from '../assets/background_rewind.png'
-import { api, type CurrentUser, type Friend, type RewindVideo } from '../lib/api'
-import { compileDailyRewindVideo, compileMultiRewindVideo } from '../lib/rewindCompiler'
+import { api, resolveVideoUrl, type CurrentUser, type Friend, type RewindVideo } from '../lib/api'
 import { DailyRewindsList } from '../features/rewinds/components/DailyRewindsList'
 import { FriendsPanel } from '../features/rewinds/components/FriendsPanel'
 import { MultiRewindComposerModal } from '../features/rewinds/components/MultiRewindComposerModal'
@@ -15,7 +14,6 @@ import { RewindsFilterBar } from '../features/rewinds/components/RewindsFilterBa
 import { RewindsHeader } from '../features/rewinds/components/RewindsHeader'
 import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getFriendWithRewindForDay } from '../features/rewinds/selectors'
 import type { DailyRewind, MultiRewind } from '../features/rewinds/types'
-import { DateTime } from "luxon";
 
 
 export function RewindsPage() {
@@ -34,27 +32,17 @@ export function RewindsPage() {
   const [rewindsError, setRewindsError] = useState<string | null>(null)
   const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>([])
   const [activeRewind, setActiveRewind] = useState<DailyRewind | null>(null)
-  const [compiledRewindUrls, setCompiledRewindUrls] = useState<Record<string, string>>({})
+  const [generatedRewindUrls, setGeneratedRewindUrls] = useState<Record<string, string>>({})
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [selectedComposerDayId, setSelectedComposerDayId] = useState<string | null>(null)
   const [selectedMultiFriendIds, setSelectedMultiFriendIds] = useState<string[]>([])
   const [composerError, setComposerError] = useState<string | null>(null)
   const [activeMultiRewindId, setActiveMultiRewindId] = useState<string | null>(null)
-  const [rewindRenderError, setRewindRenderError] = useState<string | null>(null)
-  const [renderingRewindId, setRenderingRewindId] = useState<string | null>(null)
-  const [multiRenderError, setMultiRenderError] = useState<string | null>(null)
-  const [renderingMultiId, setRenderingMultiId] = useState<string | null>(null)
-  const [multiUploadError, setMultiUploadError] = useState<string | null>(null)
-  const generatedUrlsRef = useRef<string[]>([])
-
-  useEffect(() => {
-    return () => {
-      for (const url of generatedUrlsRef.current) {
-        URL.revokeObjectURL(url)
-      }
-    }
-  }, [])
+  const [rewindGenerateError, setRewindGenerateError] = useState<string | null>(null)
+  const [generatingRewindId, setGeneratingRewindId] = useState<string | null>(null)
+  const [multiGenerateError, setMultiGenerateError] = useState<string | null>(null)
+  const [generatingMultiId, setGeneratingMultiId] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadRewindFeed() {
@@ -127,37 +115,37 @@ export function RewindsPage() {
     () => multiRewinds.find((rewind) => rewind.id === activeMultiRewindId) ?? null,
     [multiRewinds, activeMultiRewindId],
   )
-  const isTransitionLoading = Boolean(renderingRewindId || renderingMultiId)
+  const isTransitionLoading = Boolean(generatingRewindId || generatingMultiId)
   const profileName = currentUser?.username ?? window.localStorage.getItem('bfr.username') ?? 'User'
 
   const openRewind = async (rewind: DailyRewind) => {
-    setRewindRenderError(null)
+    setRewindGenerateError(null)
     setActiveRewind(rewind)
 
-    if (compiledRewindUrls[rewind.id] || renderingRewindId === rewind.id) {
+    if (generatedRewindUrls[rewind.id] || generatingRewindId === rewind.id) {
       return
     }
 
-    setRenderingRewindId(rewind.id)
+    setGeneratingRewindId(rewind.id)
 
     try {
-      const videoUrl = await compileDailyRewindVideo(rewind.clips)
-      generatedUrlsRef.current.push(videoUrl)
-      setCompiledRewindUrls((previous) => ({
+      const video = await api.generateMashup(rewind.dateIsoString)
+      const videoUrl = resolveVideoUrl(video)
+      setGeneratedRewindUrls((previous) => ({
         ...previous,
         [rewind.id]: videoUrl,
       }))
     } catch (error) {
       console.error(error)
-      setRewindRenderError('error')
+      setRewindGenerateError('Could not generate this rewind.')
     } finally {
-      setRenderingRewindId(null)
+      setGeneratingRewindId(null)
     }
   }
 
   const closeRewind = () => {
     setActiveRewind(null)
-    setRewindRenderError(null)
+    setRewindGenerateError(null)
   }
 
   const handleFriendSearch = async () => {
@@ -312,45 +300,34 @@ export function RewindsPage() {
   }
 
   const openMultiRewind = async (rewind: MultiRewind) => {
-    setMultiRenderError(null)
-    setMultiUploadError(null)
+    setMultiGenerateError(null)
     setActiveMultiRewindId(rewind.id)
 
-    if (rewind.videoUrl || renderingMultiId === rewind.id) {
+    if (rewind.videoUrl || generatingMultiId === rewind.id) {
       return
     }
 
-    setRenderingMultiId(rewind.id)
+    setGeneratingMultiId(rewind.id)
 
     try {
-      // const videoUrl = await compileMultiRewindVideo(rewind.participants)
-      // generatedUrlsRef.current.push(videoUrl)
-      // setMultiRewinds((previous) =>
-      //   previous.map((existingRewind) =>
-      //     existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
-      //   ),
-      // )
-      //
-      // try {
-      //   const compiledBlob = await blobFromObjectUrl(videoUrl)
-      //   await api.uploadMashup(compiledBlob, new Date().toISOString())
-      // } catch (uploadError) {
-      //   console.error(uploadError)
-      //   setMultiUploadError('Multi-Rewind rendered locally, but backend upload is not ready yet.')
-      // }
-      await api.generateMashup(DateTime.now())
+      const video = await api.generateMashup(rewind.dateIsoString)
+      const videoUrl = resolveVideoUrl(video)
+      setMultiRewinds((previous) =>
+        previous.map((existingRewind) =>
+          existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
+        ),
+      )
     } catch (error) {
       console.error(error)
-      setMultiRenderError('Could not compile the Multi-Rewind on this device.')
+      setMultiGenerateError('Could not generate this Multi-Rewind.')
     } finally {
-      setRenderingMultiId(null)
+      setGeneratingMultiId(null)
     }
   }
 
   const closeMultiRewind = () => {
     setActiveMultiRewindId(null)
-    setMultiRenderError(null)
-    setMultiUploadError(null)
+    setMultiGenerateError(null)
   }
 
   return (
@@ -408,9 +385,9 @@ export function RewindsPage() {
       {activeRewind ? (
         <RewindPlayerModal
           rewind={activeRewind}
-          compiledVideoUrl={compiledRewindUrls[activeRewind.id]}
-          isRendering={renderingRewindId === activeRewind.id}
-          renderError={rewindRenderError}
+          videoUrl={generatedRewindUrls[activeRewind.id]}
+          isGenerating={generatingRewindId === activeRewind.id}
+          generateError={rewindGenerateError}
           onClose={closeRewind}
         />
       ) : null}
@@ -418,8 +395,8 @@ export function RewindsPage() {
       {activeMultiRewind ? (
         <MultiRewindPlayerModal
           rewind={activeMultiRewind}
-          isRendering={renderingMultiId === activeMultiRewind.id}
-          renderError={multiRenderError ?? multiUploadError}
+          isGenerating={generatingMultiId === activeMultiRewind.id}
+          generateError={multiGenerateError}
           onClose={closeMultiRewind}
         />
       ) : null}
@@ -486,9 +463,4 @@ export function RewindsPage() {
       ) : null}
     </>
   )
-}
-
-async function blobFromObjectUrl(objectUrl: string) {
-  const response = await fetch(objectUrl)
-  return response.blob()
 }
