@@ -191,6 +191,7 @@ export function RewindsPage() {
     () => multiRewinds.find((rewind) => rewind.id === activeMultiRewindId) ?? null,
     [multiRewinds, activeMultiRewindId],
   )
+  const isTransitionLoading = Boolean(renderingRewindId || renderingMultiId)
 
   const openRewind = async (rewind: DailyRewind) => {
     setRewindRenderError(null)
@@ -651,6 +652,17 @@ export function RewindsPage() {
           </button>
         </aside>
       </main>
+      <div className={`page-transition-overlay${isTransitionLoading ? ' is-active' : ''}`}>
+        <span className="transition-loading">
+          Loading<span className="transition-loading__dots" />
+        </span>
+        {Array.from({ length: 14 }).map((_, index) => (
+          <span key={`sparkle-${index}`} className="transition-sparkle" />
+        ))}
+        {Array.from({ length: 10 }).map((_, index) => (
+          <span key={`bubble-${index}`} className="bubble" />
+        ))}
+      </div>
       {activeRewind ? (
         <div className="composer-overlay" role="dialog" aria-modal="true" aria-labelledby="rewind-player-title">
           <div className="rewind-player">
