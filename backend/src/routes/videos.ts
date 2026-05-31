@@ -2,40 +2,41 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { Hono } from 'hono'
-import { and, desc, eq, inArray, or } from 'drizzle-orm'
+import { desc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
-import { friendsTable, sessionsTable, usersTable, videosTable } from '../db/schema.js'
+import { friendsTable, usersTable, videosTable } from '../db/schema.js'
+import { getUserIdFromRequest } from '../utils/auth.js'
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
 
-type VideoType = "clip" | "mashup";
+type VideoType = 'clip' | 'mashup'
 
 type VideoFeedItem = {
-  id: string;
-  userId: string;
-  username: string;
-  createdAt: string;
-  videoUrl: string;
-  type: VideoType;
-  isYou: boolean;
-};
+	id: string
+	userId: string
+	username: string
+	createdAt: string
+	videoUrl: string
+	type: VideoType
+	isYou: boolean
+}
 
 function getFileExtension(file: File) {
-  const originalExtension = path.extname(file.name).toLowerCase();
-  if (originalExtension) {
-    return originalExtension;
-  }
+	const originalExtension = path.extname(file.name).toLowerCase()
+	if (originalExtension) {
+		return originalExtension
+	}
 }
 
 /**
  * Upload a clip
  */
-videos.post("/clips", async (c) => {
-  const currentUserId = await getUserIdFromRequest(c);
-  if (!currentUserId) {
-    return c.json({ error: "Invalid or expired token" }, 401);
-  }
+videos.post('/clips', async (c) => {
+	const currentUserId = await getUserIdFromRequest(c)
+	if (!currentUserId) {
+		return c.json({ error: 'Invalid or expired token' }, 401)
+	}
 
 	const formData = await c.req.formData()
 	const file = formData.get('video')
@@ -46,10 +47,10 @@ videos.post("/clips", async (c) => {
 
 	await mkdir(uploadsDir, { recursive: true })
 
-  const extension = getFileExtension(file);
-  const filename = `${randomUUID()}${extension}`;
-  const absoluteFilePath = path.join(uploadsDir, filename);
-  const createdAt = new Date();
+	const extension = getFileExtension(file)
+	const filename = `${randomUUID()}${extension}`
+	const absoluteFilePath = path.join(uploadsDir, filename)
+	const createdAt = new Date()
 
 	const buffer = Buffer.from(await file.arrayBuffer())
 	await writeFile(absoluteFilePath, buffer)
@@ -79,21 +80,16 @@ videos.post("/clips", async (c) => {
 /**
  * Home screen feed
  */
-videos.get("/feed", async (c) => {
-  const currentUserId = await getUserIdFromRequest(c);
-  if (!currentUserId) {
-    return c.json({ error: "Invalid or expired token" }, 401);
-  }
+videos.get('/feed', async (c) => {
+	const currentUserId = await getUserIdFromRequest(c)
+	if (!currentUserId) {
+		return c.json({ error: 'Invalid or expired token' }, 401)
+	}
 
-  const friendRows = await db
-    .select()
-    .from(friendsTable)
-    .where(
-      or(
-        eq(friendsTable.userId1, currentUserId),
-        eq(friendsTable.userId2, currentUserId),
-      ),
-    );
+	const friendRows = await db
+		.select()
+		.from(friendsTable)
+		.where(or(eq(friendsTable.userId1, currentUserId), eq(friendsTable.userId2, currentUserId)))
 
 	const friendIds = friendRows.map((row) =>
 		String(row.userId1) === currentUserId ? String(row.userId2) : String(row.userId1),

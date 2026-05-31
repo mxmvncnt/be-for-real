@@ -21,15 +21,15 @@ app.get('/uploads/:filename', async (c) => {
 	const filename = c.req.param('filename')
 	const absolutePath = path.resolve(process.cwd(), 'uploads', filename)
 
-  try {
-    const fileBuffer = await readFile(absolutePath);
-    return c.body(fileBuffer, 200, {
-      "Cache-Control": "no-store",
-    });
-  } catch {
-    return c.json({ error: "File not found" }, 404);
-  }
-});
+	try {
+		const fileBuffer = await readFile(absolutePath)
+		return c.body(fileBuffer, 200, {
+			'Cache-Control': 'no-store',
+		})
+	} catch {
+		return c.json({ error: 'File not found' }, 404)
+	}
+})
 
 app.route('/auth', auth)
 app.route('/', friend)
