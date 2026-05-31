@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 
-const MAX_DURATION_SECONDS = 5
+const MAX_DURATION_SECONDS = 2
 
 const FILTERS = [
   { id: 'clear', label: 'A', className: '' },
@@ -335,6 +335,7 @@ export function CameraPage() {
       <CameraPreview
         activeFilterClassName={activeFilter.className}
         cameraError={cameraError}
+        cameraFacingMode={cameraFacingMode}
         clipUrl={clipUrl}
         liveVideoRef={liveVideoRef}
         playbackVideoRef={playbackVideoRef}
@@ -440,6 +441,7 @@ function CameraHeader() {
 
 function CameraPreview({
   activeFilterClassName,
+  cameraFacingMode,
   clipUrl,
   playbackVideoRef,
   liveVideoRef,
@@ -447,6 +449,7 @@ function CameraPreview({
   cameraError,
 }: {
   activeFilterClassName: string
+  cameraFacingMode: 'user' | 'environment'
   clipUrl: string | null
   playbackVideoRef: { current: HTMLVideoElement | null }
   liveVideoRef: { current: HTMLVideoElement | null }
@@ -472,7 +475,7 @@ function CameraPreview({
             <video
               ref={liveVideoRef}
               autoPlay
-              className="camera-video"
+              className={`camera-video ${cameraFacingMode === 'user' ? 'camera-video--mirrored' : ''}`.trim()}
               muted
               playsInline
             />
@@ -589,7 +592,7 @@ function CameraControls({
       </div>
 
       <div className="camera-footer-note">
-        <span>Short capture only: 2-5 seconds</span>
+        <span>Short capture only: 2 seconds max</span>
         {saveError ? <span className="camera-save-error">{saveError}</span> : null}
         {cameraError ? (
           <button className="camera-retry" type="button" onClick={onRetryCamera}>

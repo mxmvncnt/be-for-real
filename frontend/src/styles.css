@@ -767,6 +767,10 @@ input {
   object-fit: cover;
 }
 
+.camera-video--mirrored {
+  transform: scaleX(-1);
+}
+
 .camera-preview__overlay {
   position: absolute;
   inset: 0;
