@@ -436,12 +436,7 @@ export function RewindsPage() {
     setMultiGenerateError(null)
     setActiveMultiRewindId(rewind.id)
 
-    if (!rewind.musicId) {
-      setMultiGenerateError('This Multi-Rewind is missing a song.')
-      return
-    }
-
-    if (generatingMultiId === rewind.id) {
+    if (rewind.videoFilename || generatingMultiId === rewind.id) {
       return
     }
 
@@ -450,7 +445,7 @@ export function RewindsPage() {
     try {
       const video = await api.generateMultiRewind(rewind.dateIsoString, {
         friendsIds: rewind.friendIds,
-        musicId: rewind.musicId,
+        musicId: rewind.musicId!,
       })
       setMultiRewinds((previous) =>
         previous.map((existingRewind) =>

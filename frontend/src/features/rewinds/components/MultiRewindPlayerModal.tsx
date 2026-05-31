@@ -29,9 +29,7 @@ export function MultiRewindPlayerModal({
 
         {generateError ? <p className="friends-panel__message">{generateError}</p> : null}
 
-        {isGenerating ? (
-          <div className="rewind-player__loading">Generating Multi-Rewind...</div>
-        ) : rewind.videoFilename ? (
+        {rewind.videoFilename ? (
           <div className="rewind-player__stage">
             <video
               autoPlay
@@ -42,7 +40,9 @@ export function MultiRewindPlayerModal({
             />
           </div>
         ) : (
-          <div className="rewind-player__loading">Preparing Multi-Rewind...</div>
+          <div className="rewind-player__loading">
+            {isGenerating ? 'Generating Multi-Rewind...' : 'Preparing Multi-Rewind...'}
+          </div>
         )}
 
         <div className="composer-actions">

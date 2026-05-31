@@ -37,14 +37,13 @@ export function addMusic(
 	startSeconds: number,
 	outputPath: string,
 ): Promise<void> {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve) => {
 		ffmpeg(videoPath)
 			.input(musicPath)
-			.inputOptions(['-ss', String(startSeconds)])
-			.outputOptions(['-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-shortest'])
+			.inputOptions([`-ss ${startSeconds}`])
+			.outputOptions(['-map 0:v', '-map 1:a', '-c:v copy', '-c:a aac', '-shortest'])
 			.output(outputPath)
 			.on('end', () => resolve())
-			.on('error', (error) => reject(error))
 			.run()
 	})
 }

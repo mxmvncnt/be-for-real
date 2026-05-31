@@ -2,8 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import path, { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import path, { join } from 'node:path'
 import { Hono } from 'hono'
 import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
@@ -21,10 +20,8 @@ import { songs } from '../data/songs.js'
 import areUsersFriends from '../utils/friends.js'
 
 const videos = new Hono()
-const moduleRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..')
-const backendRoot = existsSync(join(moduleRoot, 'music')) ? moduleRoot : process.cwd()
-const uploadsDir = join(backendRoot, 'uploads')
-const musicDir = join(backendRoot, 'music')
+const uploadsDir = path.resolve(process.cwd(), 'uploads')
+const musicDir = path.resolve(process.cwd(), 'music')
 
 type VideoType = 'clip' | 'mashup' | 'multi_rewind'
 
@@ -275,10 +272,6 @@ videos.post('/multi-rewind/:date', async (c) => {
 		return c.json({ error: 'Multi-Rewind requires 1 to 3 friends' }, 400)
 	}
 
-	if (!musicId) {
-		return c.json({ error: 'musicId is required' }, 400)
-	}
-
 	const song = songs.find((entry) => entry.id === musicId)
 	if (!song) {
 		return c.json({ error: 'Invalid musicId' }, 400)
@@ -318,13 +311,9 @@ videos.post('/multi-rewind/:date', async (c) => {
 	}
 
 	if (!existsSync(outputFile)) {
-		const stackedFile = join(tmpdir(), `multi_rewind_stack_${hash}.mp4`)
-		await stackParticipantVideos(mashupPaths, stackedFile)
-		const musicPath = join(musicDir, song.fileName)
-		if (!existsSync(musicPath)) {
-			return c.json({ error: 'Music file not found' }, 404)
-		}
-		await addMusic(stackedFile, musicPath, song.startSeconds, outputFile)
+		const tmp = join(tmpdir(), `${hash}.mp4`)
+		await stackParticipantVideos(mashupPaths, tmp)
+		await addMusic(tmp, join(musicDir, song.fileName), song.startSeconds, outputFile)
 	}
 
 	const [video] = await db
