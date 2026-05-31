@@ -1,3 +1,5 @@
+import { DateTime } from "luxon";
+
 export type HealthResponse = {
   ok: boolean;
   service: string;
@@ -133,6 +135,18 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
       body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return response.json() as Promise<RewindVideo>;
+  },
+  generateMashup: async (date: DateTime) => {
+    const response = await fetch(`${API_BASE_URL}/videos/mashup/${date.startOf('day').toISO()}`, {
+      method: "GET",
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {

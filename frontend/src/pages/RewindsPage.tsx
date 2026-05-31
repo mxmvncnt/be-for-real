@@ -15,6 +15,8 @@ import { RewindsFilterBar } from '../features/rewinds/components/RewindsFilterBa
 import { RewindsHeader } from '../features/rewinds/components/RewindsHeader'
 import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getFriendWithRewindForDay } from '../features/rewinds/selectors'
 import type { DailyRewind, MultiRewind } from '../features/rewinds/types'
+import { DateTime } from "luxon";
+
 
 export function RewindsPage() {
   const [activeTab, setActiveTab] = useState<'rewinds' | 'multi'>('rewinds')
@@ -321,21 +323,22 @@ export function RewindsPage() {
     setRenderingMultiId(rewind.id)
 
     try {
-      const videoUrl = await compileMultiRewindVideo(rewind.participants)
-      generatedUrlsRef.current.push(videoUrl)
-      setMultiRewinds((previous) =>
-        previous.map((existingRewind) =>
-          existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
-        ),
-      )
-
-      try {
-        const compiledBlob = await blobFromObjectUrl(videoUrl)
-        await api.uploadMashup(compiledBlob, new Date().toISOString())
-      } catch (uploadError) {
-        console.error(uploadError)
-        setMultiUploadError('Multi-Rewind rendered locally, but backend upload is not ready yet.')
-      }
+      // const videoUrl = await compileMultiRewindVideo(rewind.participants)
+      // generatedUrlsRef.current.push(videoUrl)
+      // setMultiRewinds((previous) =>
+      //   previous.map((existingRewind) =>
+      //     existingRewind.id === rewind.id ? { ...existingRewind, videoUrl } : existingRewind,
+      //   ),
+      // )
+      //
+      // try {
+      //   const compiledBlob = await blobFromObjectUrl(videoUrl)
+      //   await api.uploadMashup(compiledBlob, new Date().toISOString())
+      // } catch (uploadError) {
+      //   console.error(uploadError)
+      //   setMultiUploadError('Multi-Rewind rendered locally, but backend upload is not ready yet.')
+      // }
+      await api.generateMashup(DateTime.now())
     } catch (error) {
       console.error(error)
       setMultiRenderError('Could not compile the Multi-Rewind on this device.')
