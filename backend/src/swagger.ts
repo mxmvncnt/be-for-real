@@ -354,8 +354,8 @@ const openApiDoc = {
 				},
 			},
 		},
-		'/videos/mashup/{date}/{userId}': {
-			get: {
+		'/videos/mashup/{date}': {
+			post: {
 				summary: 'Create or retrieve a mashup for a user on a date',
 				tags: ['Videos'],
 				security: [{ TokenAuth: [] }],
@@ -367,14 +367,34 @@ const openApiDoc = {
 						schema: { type: 'string', format: 'date-time' },
 						description: 'Start of the day (ISO 8601) to mash up clips from',
 					},
-					{
-						name: 'userId',
-						in: 'path',
-						required: true,
-						schema: { type: 'string', format: 'uuid' },
-						description: 'User whose clips should be included in the mashup',
-					},
 				],
+				requestBody: {
+					required: true,
+					content: {
+						'application/json': {
+							schema: {
+								type: 'object',
+								properties: {
+									userId: {
+										type: 'string',
+										format: 'uuid',
+										description: 'User whose clips should be included in the mashup',
+									},
+									musicId: {
+										type: 'string',
+										description: 'Song to overlay on the mashup',
+									},
+									friendsIds: {
+										type: 'array',
+										items: { type: 'string', format: 'uuid' },
+										description: 'Friend user IDs to include in a multi-rewind mashup',
+									},
+								},
+								required: ['userId', 'musicId', 'friendsIds'],
+							},
+						},
+					},
+				},
 				responses: {
 					'200': { description: 'Existing mashup returned' },
 					'201': { description: 'Mashup created' },
