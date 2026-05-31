@@ -88,47 +88,53 @@ export function RewindsPage() {
     void loadCurrentUser()
   }, [])
 
-  useEffect(() => {
-    async function loadFriends() {
-      setFriendsLoading(true)
-      setFriendError(null)
+  const loadFriends = async () => {
+    setFriendsLoading(true)
+    setFriendError(null)
 
-      try {
-        const nextFriends = await api.getFriends()
-        setFriends(nextFriends)
-      } catch (error) {
-        console.error(error)
-        setFriendError('Could not load your friends.')
-      } finally {
-        setFriendsLoading(false)
-      }
+    try {
+      const nextFriends = await api.getFriends()
+      setFriends(nextFriends)
+    } catch (error) {
+      console.error(error)
+      setFriendError('Could not load your friends.')
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
+
+  const loadFriendRequests = async () => {
+    setFriendRequestsLoading(true)
+    setFriendError(null)
+
+    try {
+      const [received, sent] = await Promise.all([
+        api.getFriendRequestsReceived(),
+        api.getFriendRequestsSent(),
+      ])
+      setIncomingRequests(received)
+      setOutgoingRequests(sent)
+    } catch (error) {
+      console.error(error)
+      setFriendError('Could not load friend requests.')
+    } finally {
+      setFriendRequestsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadFriends()
+    void loadFriendRequests()
+  }, [])
+
+  useEffect(() => {
+    if (!isFriendsModalOpen) {
+      return
     }
 
     void loadFriends()
-  }, [])
-
-  useEffect(() => {
-    async function loadFriendRequests() {
-      setFriendRequestsLoading(true)
-      setFriendError(null)
-
-      try {
-        const [received, sent] = await Promise.all([
-          api.getFriendRequestsReceived(),
-          api.getFriendRequestsSent(),
-        ])
-        setIncomingRequests(received)
-        setOutgoingRequests(sent)
-      } catch (error) {
-        console.error(error)
-        setFriendError('Could not load friend requests.')
-      } finally {
-        setFriendRequestsLoading(false)
-      }
-    }
-
     void loadFriendRequests()
-  }, [])
+  }, [isFriendsModalOpen])
 
   const dailyRewinds = useMemo(() => buildDailyRewinds(rewindFeed), [rewindFeed])
   const ownRewinds = useMemo(() => dailyRewinds.filter((rewind) => rewind.isYou), [dailyRewinds])
@@ -192,7 +198,10 @@ export function RewindsPage() {
     }
 
     let ignore = false
-    setFriendSearchLoading(true)
+    const shouldShowSpinner = friendResults.length === 0
+    if (shouldShowSpinner) {
+      setFriendSearchLoading(true)
+    }
     setFriendError(null)
 
     api
@@ -239,6 +248,7 @@ export function RewindsPage() {
         )
       })
       setFriendResults((previous) => previous.filter((result) => result.id !== friend.id))
+      await Promise.all([loadFriends(), loadFriendRequests()])
     } catch (error) {
       console.error(error)
       setFriendError(`Could not add ${friend.username}.`)
@@ -262,6 +272,7 @@ export function RewindsPage() {
           left.username.localeCompare(right.username),
         )
       })
+      await Promise.all([loadFriends(), loadFriendRequests()])
     } catch (error) {
       console.error(error)
       setFriendError(`Could not accept ${friend.username}.`)
@@ -286,6 +297,7 @@ export function RewindsPage() {
             !rewind.participants.some((participant) => participant.ownerId === friend.id),
         ),
       )
+      await Promise.all([loadFriends(), loadFriendRequests()])
     } catch (error) {
       console.error(error)
       setFriendError(`Could not remove ${friend.username}.`)
@@ -527,6 +539,10 @@ export function RewindsPage() {
               isAlreadyFriend={isAlreadyFriend}
               isIncomingRequest={isIncomingRequest}
               isOutgoingRequest={isOutgoingRequest}
+              onTabChange={() => {
+                void loadFriends()
+                void loadFriendRequests()
+              }}
               onAddFriend={handleAddFriend}
               onAcceptFriend={handleAcceptFriend}
               onFriendQueryChange={setFriendQuery}

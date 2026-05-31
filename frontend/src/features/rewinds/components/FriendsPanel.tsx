@@ -13,6 +13,7 @@ type FriendsPanelProps = {
   friendResults: Friend[]
   friendActionLoadingId: string | null
   onFriendQueryChange: (value: string) => void
+  onTabChange: (tab: 'friends' | 'add') => void
   onAddFriend: (friend: Friend) => void
   onAcceptFriend: (friend: Friend) => void
   onRemoveFriend: (friend: Friend) => void
@@ -33,6 +34,7 @@ export function FriendsPanel({
   friendResults,
   friendActionLoadingId,
   onFriendQueryChange,
+  onTabChange,
   onAddFriend,
   onAcceptFriend,
   onRemoveFriend,
@@ -41,6 +43,14 @@ export function FriendsPanel({
   isIncomingRequest,
 }: FriendsPanelProps) {
   const [activeTab, setActiveTab] = useState<'friends' | 'add'>('friends')
+
+  const switchTab = (tab: 'friends' | 'add') => {
+    if (tab === activeTab) {
+      return
+    }
+    setActiveTab(tab)
+    onTabChange(tab)
+  }
 
   const renderActionButtons = (friend: Friend) => {
     if (isIncomingRequest(friend.id)) {
@@ -108,7 +118,7 @@ export function FriendsPanel({
           type="button"
           role="tab"
           aria-selected={activeTab === 'friends'}
-          onClick={() => setActiveTab('friends')}
+          onClick={() => switchTab('friends')}
         >
           Friends
         </button>
@@ -117,7 +127,7 @@ export function FriendsPanel({
           type="button"
           role="tab"
           aria-selected={activeTab === 'add'}
-          onClick={() => setActiveTab('add')}
+          onClick={() => switchTab('add')}
         >
           Add friend
         </button>
