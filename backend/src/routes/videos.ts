@@ -50,8 +50,9 @@ videos.post('/clips', async (c) => {
 
 	await mkdir(uploadsDir, { recursive: true })
 
+	const uuid = randomUUID()
 	const extension = getFileExtension(file)
-	const filename = `${randomUUID()}${extension}`
+	const filename = `${uuid}${extension}`
 	const absoluteFilePath = path.join(uploadsDir, filename)
 	const createdAt = new Date()
 
@@ -61,7 +62,7 @@ videos.post('/clips', async (c) => {
 	const [video] = await db
 		.insert(videosTable)
 		.values({
-			id: randomUUID(),
+			id: uuid,
 			userId: currentUserId,
 			createdAt,
 			videoUrl: `/uploads/${filename}`,
