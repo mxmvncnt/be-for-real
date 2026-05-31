@@ -76,6 +76,17 @@ const openApiDoc = {
         },
       },
     },
+    "/auth/logout": {
+      post: {
+        summary: "Logout a user",
+        tags: ["Auth"],
+        security: [{ TokenAuth: [] }],
+        responses: {
+          "200": { description: "Session removed" },
+          "401": { description: "Missing or invalid token" },
+        },
+      },
+    },
     "/user/{friendId}/add": {
       post: {
         summary: "Add a friend for the authenticated user",
