@@ -13,7 +13,7 @@ import { RewindPlayerModal } from '../features/rewinds/components/RewindPlayerMo
 import { RewindsFab } from '../features/rewinds/components/RewindsFab'
 import { RewindsFilterBar } from '../features/rewinds/components/RewindsFilterBar'
 import { RewindsHeader } from '../features/rewinds/components/RewindsHeader'
-import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getComposerFriendOptions } from '../features/rewinds/selectors'
+import { buildDailyRewinds, filterDailyRewinds, filterMultiRewinds, getFriendWithRewindForDay } from '../features/rewinds/selectors'
 import type { DailyRewind, MultiRewind } from '../features/rewinds/types'
 
 export function RewindsPage() {
@@ -33,6 +33,7 @@ export function RewindsPage() {
   const [multiRewinds, setMultiRewinds] = useState<MultiRewind[]>([])
   const [activeRewind, setActiveRewind] = useState<DailyRewind | null>(null)
   const [compiledRewindUrls, setCompiledRewindUrls] = useState<Record<string, string>>({})
+  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [selectedComposerDayId, setSelectedComposerDayId] = useState<string | null>(null)
   const [selectedMultiFriendIds, setSelectedMultiFriendIds] = useState<string[]>([])
@@ -105,11 +106,11 @@ export function RewindsPage() {
 
   const dailyRewinds = useMemo(() => buildDailyRewinds(rewindFeed), [rewindFeed])
   const ownRewinds = useMemo(() => dailyRewinds.filter((rewind) => rewind.isYou), [dailyRewinds])
-  const selectedComposerDay =
+  const selectedDay =
     ownRewinds.find((rewind) => rewind.id === selectedComposerDayId) ?? ownRewinds[0] ?? null
   const composerFriendOptions = useMemo(
-    () => getComposerFriendOptions(friends, dailyRewinds, selectedComposerDay),
-    [friends, dailyRewinds, selectedComposerDay],
+    () => getFriendWithRewindForDay(friends, dailyRewinds, selectedDay),
+    [friends, dailyRewinds, selectedDay],
   )
   const filteredRewinds = useMemo(
     () => filterDailyRewinds(dailyRewinds, searchTerm),
@@ -125,8 +126,6 @@ export function RewindsPage() {
   )
   const isTransitionLoading = Boolean(renderingRewindId || renderingMultiId)
   const profileName = currentUser?.username ?? window.localStorage.getItem('bfr.username') ?? 'User'
-  const profileDescription =
-    currentUser?.description?.trim() || 'Record daily clips and build your rewind.'
 
   const openRewind = async (rewind: DailyRewind) => {
     setRewindRenderError(null)
@@ -262,7 +261,7 @@ export function RewindsPage() {
   }
 
   const handleCreateMultiRewind = () => {
-    if (!selectedComposerDay) {
+    if (!selectedDay) {
       setComposerError('You need at least one personal rewind day first.')
       return
     }
@@ -282,9 +281,9 @@ export function RewindsPage() {
 
     const participantRewinds = [
       {
-        ownerId: selectedComposerDay.ownerId,
-        ownerName: selectedComposerDay.ownerName,
-        clips: selectedComposerDay.clips,
+        ownerId: selectedDay.ownerId,
+        ownerName: selectedDay.ownerName,
+        clips: selectedDay.clips,
       },
       ...selectedFriends.map((entry) => ({
         ownerId: entry.rewind.ownerId,
@@ -295,10 +294,10 @@ export function RewindsPage() {
 
     const createdRewind: MultiRewind = {
       id: `multi-${Date.now()}`,
-      title: `${profileName}'s ${selectedComposerDay.title
-        .replace(`${selectedComposerDay.ownerName}'s `, '')
+      title: `${profileName}'s ${selectedDay.title
+        .replace(`${selectedDay.ownerName}'s `, '')
         .replace('Rewind', 'Multi-Rewind')}`,
-      dayKey: selectedComposerDay.dayKey,
+      dateIsoString: selectedDay.dateIsoString,
       participants: participantRewinds,
       createdBy: 'You',
       videoUrl: null,
@@ -352,31 +351,18 @@ export function RewindsPage() {
         }}
       >
         <section className="rewinds-screen">
-          <RewindsHeader />
+          <section className="rewinds-profile-panel">
+            <RewindsHeader />
 
-          <ProfileBanner
-            profileName={profileName}
-            profileDescription={profileDescription}
-            friendCount={friends.length}
-            ownRewindCount={ownRewinds.length}
-          />
+            <ProfileBanner
+              profileName={profileName}
+              friendCount={friends.length}
+              ownRewindCount={ownRewinds.length}
+              onOpenFriends={() => setIsFriendsModalOpen(true)}
+            />
+          </section>
 
           <section className="rewinds-panel">
-            <FriendsPanel
-              friendActionLoadingId={friendActionLoadingId}
-              friendError={friendError}
-              friendQuery={friendQuery}
-              friendResults={friendResults}
-              friendSearchLoading={friendSearchLoading}
-              friends={friends}
-              friendsLoading={friendsLoading}
-              isAlreadyFriend={isAlreadyFriend}
-              onAddFriend={handleAddFriend}
-              onFriendQueryChange={setFriendQuery}
-              onFriendSearch={() => void handleFriendSearch()}
-              onRemoveFriend={handleRemoveFriend}
-            />
-
             <RewindsFilterBar
               activeTab={activeTab}
               searchTerm={searchTerm}
@@ -424,13 +410,59 @@ export function RewindsPage() {
         />
       ) : null}
 
+      {isFriendsModalOpen ? (
+        <div
+          className="composer-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="friends-modal-title"
+        >
+          <div className="friends-modal">
+            <div className="friends-modal__titlebar">
+              <h2 id="friends-modal-title">Friends</h2>
+              <div className="window-actions">
+                <span className="window-actions__button" aria-hidden="true">
+                  -
+                </span>
+                <span className="window-actions__button" aria-hidden="true">
+                  □
+                </span>
+                <button
+                  aria-label="Close friends"
+                  className="window-actions__button window-actions__button--close friends-modal__close"
+                  type="button"
+                  onClick={() => setIsFriendsModalOpen(false)}
+                >
+                  X
+                </button>
+              </div>
+            </div>
+
+            <FriendsPanel
+              friendActionLoadingId={friendActionLoadingId}
+              friendError={friendError}
+              friendQuery={friendQuery}
+              friendResults={friendResults}
+              friendSearchLoading={friendSearchLoading}
+              friends={friends}
+              friendsLoading={friendsLoading}
+              isAlreadyFriend={isAlreadyFriend}
+              onAddFriend={handleAddFriend}
+              onFriendQueryChange={setFriendQuery}
+              onFriendSearch={() => void handleFriendSearch()}
+              onRemoveFriend={handleRemoveFriend}
+            />
+          </div>
+        </div>
+      ) : null}
+
       {isComposerOpen ? (
         <MultiRewindComposerModal
           composerError={composerError}
           composerFriendOptions={composerFriendOptions}
           friends={friends}
           ownRewinds={ownRewinds}
-          selectedComposerDay={selectedComposerDay}
+          selectedComposerDay={selectedDay}
           selectedMultiFriendIds={selectedMultiFriendIds}
           onClose={closeComposer}
           onComposerDayChange={handleComposerDayChange}
