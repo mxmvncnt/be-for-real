@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
+import {mkdir, readFile, writeFile} from 'node:fs/promises'
 import path from 'node:path'
 import { Hono } from 'hono'
 import { desc, eq, inArray, or } from 'drizzle-orm'
@@ -10,13 +10,15 @@ import {getUserIdFromRequest} from "../utils/auth.js";
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
 
+type VideoType = 'clip' | 'mashup'
+
 type VideoFeedItem = {
   id: string
   userId: string
   username: string
   createdAt: string
   videoUrl: string
-  type: 'clip' | 'mashup'
+  type: VideoType
   isYou: boolean
 }
 
@@ -27,6 +29,9 @@ function getFileExtension(file: File) {
   }
 }
 
+/**
+ * Upload a clip
+ */
 videos.post('/clips', async (c) => {
   const currentUserId = await getUserIdFromRequest(c)
   if (!currentUserId) {
@@ -56,7 +61,7 @@ videos.post('/clips', async (c) => {
       id: randomUUID(),
       userId: currentUserId,
       createdAt,
-      videoUrl: `/uploads/${filename}`,
+      videoUrl: ``,
       filename,
       type: 'clip',
     })
@@ -72,6 +77,9 @@ videos.post('/clips', async (c) => {
   return c.json(video, 201)
 })
 
+/**
+ * Home screen feed
+ */
 videos.get('/feed', async (c) => {
   const currentUserId = await getUserIdFromRequest(c)
   if (!currentUserId) {
@@ -126,7 +134,7 @@ videos.get('/feed', async (c) => {
     username: usernameById.get(String(video.userId)) ?? 'Unknown',
     createdAt: video.createdAt.toISOString(),
     videoUrl: video.videoUrl,
-    type: video.type,
+    type: video.type as VideoType,
     isYou: String(video.userId) === currentUserId,
   }))
 
