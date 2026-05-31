@@ -9,20 +9,10 @@ const TRANSITION_DURATION = 680;
 
 export function HomePage() {
   const navigate = useNavigate();
-  const timeoutRef = useRef<number | null>(null);
-  const [transitioning, setTransitioning] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,15 +33,7 @@ export function HomePage() {
 
   const goToSignup = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    if (transitioning) {
-      return;
-    }
-
-    setTransitioning(true);
-    timeoutRef.current = window.setTimeout(
-      () => navigate("/signup"),
-      TRANSITION_DURATION,
-    );
+    navigate("/signup");
   };
 
   return (
@@ -65,8 +47,6 @@ export function HomePage() {
         minHeight: "100vh",
       }}
     >
-      <PageTransitionOverlay active={transitioning} />
-
       <div className="profile-hero">
         <img src={logo} alt="Be For Real" className="home-logo" />
       </div>
