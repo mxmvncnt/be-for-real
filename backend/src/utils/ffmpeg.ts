@@ -4,7 +4,7 @@ import ffmpegPath from '@ffmpeg-installer/ffmpeg'
 ffmpeg.setFfmpegPath(ffmpegPath.path)
 
 export function concatVideos(listPath: string, outputPath: string): Promise<void> {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		ffmpeg()
 			.input(listPath)
 			.inputOptions(['-f concat', '-safe 0'])
@@ -12,6 +12,7 @@ export function concatVideos(listPath: string, outputPath: string): Promise<void
 			.noAudio()
 			.output(outputPath)
 			.on('end', () => resolve())
+			.on('error', (err) => reject(err))
 			.run()
 	})
 }
