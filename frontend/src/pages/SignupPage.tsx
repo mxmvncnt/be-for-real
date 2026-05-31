@@ -2,6 +2,7 @@ import { FormEvent, MouseEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import wallpaper from "../assets/main_wallpaper.jpg";
+import signupButton from "../assets/button-signup.svg";
 import logo from "/logo.png";
 
 export function SignupPage() {
@@ -130,7 +131,7 @@ export function SignupPage() {
             ) : null}
 
             <button className="auth-submit" disabled={submitting} type="submit">
-              {submitting ? "Creating account..." : "Sign up"}
+              <img src={signupButton} alt="Sign up" />
             </button>
           </form>
 

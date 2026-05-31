@@ -443,6 +443,8 @@ export function RewindsPage() {
             />
           </section>
 
+          <RewindsFab onOpenComposer={openComposer} />
+
           <section className="rewinds-panel">
             <RewindsFilterBar
               activeTab={activeTab}
@@ -466,8 +468,6 @@ export function RewindsPage() {
             )}
           </section>
         </section>
-
-        <RewindsFab onOpenComposer={openComposer} />
       </main>
 
       <PageTransitionOverlay active={isTransitionLoading} />

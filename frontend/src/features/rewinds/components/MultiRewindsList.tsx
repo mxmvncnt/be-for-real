@@ -1,15 +1,20 @@
-import type { MultiRewind } from '../types'
+import type { MultiRewind } from "../types";
 
 type MultiRewindsListProps = {
-  rewinds: MultiRewind[]
-  onOpenMultiRewind: (rewind: MultiRewind) => void
-}
+  rewinds: MultiRewind[];
+  onOpenMultiRewind: (rewind: MultiRewind) => void;
+};
 
-export function MultiRewindsList({ rewinds, onOpenMultiRewind }: MultiRewindsListProps) {
+export function MultiRewindsList({
+  rewinds,
+  onOpenMultiRewind,
+}: MultiRewindsListProps) {
   return (
     <div className="rewinds-groups">
       {rewinds.length === 0 ? (
-        <p className="friends-panel__message">No Multi-Rewinds yet. Create one from the MIX button.</p>
+        <p className="friends-panel__message">
+          No Multi-Rewinds yet. Create one from the Make Multi-Rewind button.
+        </p>
       ) : null}
       {rewinds.map((rewind) => (
         <section key={rewind.id} className="rewinds-group">
@@ -39,9 +44,17 @@ export function MultiRewindsList({ rewinds, onOpenMultiRewind }: MultiRewindsLis
                 ))}
               </div>
               <div className="rewinds-card__copy">
-                <strong>{rewind.participants.map((participant) => participant.ownerName).join(' + ')}</strong>
+                <strong>
+                  {rewind.participants
+                    .map((participant) => participant.ownerName)
+                    .join(" + ")}
+                </strong>
                 <span>
-                  {Math.min(...rewind.participants.map((participant) => participant.clips.length))}{' '}
+                  {Math.min(
+                    ...rewind.participants.map(
+                      (participant) => participant.clips.length,
+                    ),
+                  )}{" "}
                   synchronized segments
                 </span>
                 <span>Rendered as one equal-panel Multi-Rewind</span>
@@ -51,5 +64,5 @@ export function MultiRewindsList({ rewinds, onOpenMultiRewind }: MultiRewindsLis
         </section>
       ))}
     </div>
-  )
+  );
 }

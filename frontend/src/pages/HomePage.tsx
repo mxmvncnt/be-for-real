@@ -2,6 +2,7 @@ import { FormEvent, MouseEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import wallpaper from "../assets/main_wallpaper.jpg";
+import loginButton from "../assets/button-login.svg";
 import logo from "/logo.png";
 
 export function HomePage() {
@@ -94,7 +95,7 @@ export function HomePage() {
             ) : null}
 
             <button className="auth-submit" disabled={submitting} type="submit">
-              {submitting ? "Logging in..." : "Login"}
+              <img src={loginButton} alt="Login" />
             </button>
           </form>
 
