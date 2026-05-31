@@ -37,7 +37,7 @@ app.get('/uploads/:filename', async (c) => {
 })
 
 app.route('/auth', auth)
-app.route('/', friend)
+app.route('/friend', friend)
 app.route('/user', user)
 app.route('/videos', videos)
 app.route('/swagger', swagger)

@@ -86,7 +86,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getFriends: () =>
-    request<Friend[]>("/friends", {
+    request<Friend[]>("/friend/list", {
       headers: getAuthHeaders(),
     }),
   getCurrentUser: () =>

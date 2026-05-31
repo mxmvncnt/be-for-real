@@ -19,7 +19,7 @@ async function getFriendRelation(userId1: string, userId2: string) {
 		.limit(1)
 }
 
-friend.post('/friend/:friendId/add', async (c) => {
+friend.post('/:friendId/add', async (c) => {
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
 		return c.json({ error: 'Invalid or expired token' }, 401)
@@ -54,7 +54,7 @@ friend.post('/friend/:friendId/add', async (c) => {
 	return c.json({ message: 'Friend request sent' }, 201)
 })
 
-friend.post('/friend/:friendId/accept', async (c) => {
+friend.post('/:friendId/accept', async (c) => {
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
 		return c.json({ error: 'Invalid or expired token' }, 401)
@@ -86,7 +86,7 @@ friend.post('/friend/:friendId/accept', async (c) => {
 	return c.json({ message: 'Friend request accepted' }, 200)
 })
 
-friend.post('/friend/:friendId/remove', async (c) => {
+friend.post('/:friendId/remove', async (c) => {
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
 		return c.json({ error: 'Invalid or expired token' }, 401)
@@ -119,7 +119,7 @@ friend.post('/friend/:friendId/remove', async (c) => {
 	return c.json({ message: 'Friend request refused' }, 200)
 })
 
-friend.get('/friends', async (c) => {
+friend.get('/list', async (c) => {
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
 		return c.json({ error: 'Invalid or expired token' }, 401)
@@ -160,7 +160,7 @@ friend.get('/friends', async (c) => {
 	return c.json(friends.filter(Boolean), 200)
 })
 
-friend.get('/friendrequests/received', async (c) => {
+friend.get('/requests/received', async (c) => {
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
 		return c.json({ error: 'Invalid or expired token' }, 401)
@@ -194,7 +194,7 @@ friend.get('/friendrequests/received', async (c) => {
 	return c.json(requesters.filter(Boolean), 200)
 })
 
-friend.get('/friendrequests/sent', async (c) => {
+friend.get('/requests/sent', async (c) => {
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
 		return c.json({ error: 'Invalid or expired token' }, 401)

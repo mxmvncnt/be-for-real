@@ -219,7 +219,7 @@ const openApiDoc = {
 				},
 			},
 		},
-		'/friends': {
+		'/friend/list': {
 			get: {
 				summary: 'Get accepted friends',
 				tags: ['Friends'],
@@ -230,7 +230,7 @@ const openApiDoc = {
 				},
 			},
 		},
-		'/friendrequests/received': {
+		'/friend/requests/received': {
 			get: {
 				summary: 'Get incoming friend requests',
 				tags: ['Friends'],
@@ -241,7 +241,7 @@ const openApiDoc = {
 				},
 			},
 		},
-		'/friendrequests/sent': {
+		'/friend/requests/sent': {
 			get: {
 				summary: 'Get outgoing friend requests',
 				tags: ['Friends'],
