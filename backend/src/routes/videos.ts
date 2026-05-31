@@ -5,8 +5,8 @@ import { Hono } from 'hono'
 import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { friendsTable, usersTable, videosTable } from '../db/schema.js'
-import { getUserFromRequest, getUserIdFromRequest } from '../utils/auth.js'
-import mergeConcatDemuxer, { concatVideos } from '../utils/ffmpeg.js'
+import { getUserIdFromRequest } from '../utils/auth.js'
+import { concatVideos } from '../utils/ffmpeg.js'
 import { tmpdir } from 'node:os'
 
 const videos = new Hono()
