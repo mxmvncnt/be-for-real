@@ -6,6 +6,31 @@ import { getUserIdFromRequest } from "../utils/auth.js";
 
 const user = new Hono();
 
+user.get("/me", async (c) => {
+  const currentUserId = await getUserIdFromRequest(c);
+  if (!currentUserId) {
+    return c.json({ error: "Invalid or expired token" }, 401);
+  }
+
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      username: usersTable.username,
+      email: usersTable.email,
+      description: usersTable.description,
+      profilePicUrl: usersTable.profilePicUrl,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, currentUserId))
+    .limit(1);
+
+  if (!rows || rows.length === 0) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  return c.json(rows[0], 200);
+});
+
 user.post("/:friendId/add", async (c) => {
   const currentUserId = await getUserIdFromRequest(c);
   if (!currentUserId) {
