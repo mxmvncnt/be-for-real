@@ -1,6 +1,7 @@
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { PageTransitionOverlay } from "../components/PageTransitionOverlay";
 import wallpaper from "../assets/main_wallpaper.jpg";
 import logo from "/logo.png";
 
@@ -75,19 +76,7 @@ export function SignupPage() {
         minHeight: "100vh",
       }}
     >
-      <div
-        className={`page-transition-overlay${transitioning ? " is-active" : ""}`}
-      >
-        <span className="transition-loading">
-          Loading<span className="transition-loading__dots" />
-        </span>
-        {Array.from({ length: 14 }).map((_, index) => (
-          <span key={`sparkle-${index}`} className="transition-sparkle" />
-        ))}
-        {Array.from({ length: 10 }).map((_, index) => (
-          <span key={index} className="bubble" />
-        ))}
-      </div>
+      <PageTransitionOverlay active={transitioning} />
 
       <div className="profile-hero profile-hero--small">
         <img
