@@ -1,12 +1,12 @@
-import type { DailyRewind } from '../types'
+import type { DailyRewind } from "../types";
 
 type RewindPlayerModalProps = {
-  rewind: DailyRewind
-  videoUrl: string | undefined
-  isGenerating: boolean
-  generateError: string | null
-  onClose: () => void
-}
+  rewind: DailyRewind;
+  videoUrl: string | undefined;
+  isGenerating: boolean;
+  generateError: string | null;
+  onClose: () => void;
+};
 
 export function RewindPlayerModal({
   rewind,
@@ -16,7 +16,12 @@ export function RewindPlayerModal({
   onClose,
 }: RewindPlayerModalProps) {
   return (
-    <div className="composer-overlay" role="dialog" aria-modal="true" aria-labelledby="rewind-player-title">
+    <div
+      className="composer-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rewind-player-title"
+    >
       <div className="rewind-player">
         <div className="rewind-player__header">
           <div>
@@ -28,27 +33,36 @@ export function RewindPlayerModal({
           </button>
         </div>
 
-        {generateError ? <p className="friends-panel__message">{generateError}</p> : null}
+        {generateError ? (
+          <p className="friends-panel__message">{generateError}</p>
+        ) : null}
 
         {videoUrl ? (
           <div className="rewind-player__stage">
-            <video autoPlay className="rewind-player__video" controls playsInline src={videoUrl} />
+            <video
+              autoPlay
+              className="rewind-player__video"
+              controls
+              playsInline
+              src={videoUrl}
+            />
           </div>
         ) : (
           <div className="rewind-player__loading">
-            {isGenerating ? 'Generating your rewind...' : 'Preparing rewind...'}
+            {isGenerating ? "Generating your rewind..." : "Preparing rewind..."}
           </div>
         )}
 
         <div className="composer-actions">
-          <button className="composer-button composer-button--ghost" type="button" onClick={onClose}>
+          <button
+            className="composer-button composer-button--ghost"
+            type="button"
+            onClick={onClose}
+          >
             Close
           </button>
-          <div className="rewind-player__status">
-            Merged in chronological order for one continuous playback
-          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

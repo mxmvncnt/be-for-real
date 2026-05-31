@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 export function CameraHeader() {
   return (
     <header className="camera-screen__header rewinds-topbar">
-      <h1 id="camera-title">BFR CAM</h1>
+      <h1 id="camera-title">BFRL CAM</h1>
 
       <div className="window-actions">
         <span className="window-actions__button" aria-hidden="true">
