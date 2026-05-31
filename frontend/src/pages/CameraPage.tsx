@@ -358,7 +358,6 @@ export function CameraPage() {
         </CameraPreview>
       </div>
       <CameraControls
-        cameraError={cameraError}
         cameraReady={cameraReady}
         flipFailed={flipFailed}
         processingClip={processingClip}
