@@ -17,6 +17,9 @@ export function HomePage() {
     setError(null);
     try {
       const token = await api.login({ email, password });
+      if (typeof token !== "string" || !token.trim()) {
+        throw new Error("Invalid login response");
+      }
       window.localStorage.setItem("bfr.token", token);
       window.localStorage.setItem("bfr.email", email);
       navigate("/rewinds");

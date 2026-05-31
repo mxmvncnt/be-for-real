@@ -27,6 +27,9 @@ export function SignupPage() {
     try {
       await api.register({ username, email, password });
       const token = await api.login({ email, password });
+      if (typeof token !== "string" || !token.trim()) {
+        throw new Error("Invalid login response");
+      }
       window.localStorage.setItem("bfr.token", token);
       window.localStorage.setItem("bfr.email", email);
       window.localStorage.setItem("bfr.username", username);
