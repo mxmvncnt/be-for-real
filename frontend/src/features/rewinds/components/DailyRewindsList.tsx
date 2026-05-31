@@ -1,3 +1,4 @@
+import { resolveVideoUrl } from '../../../lib/api'
 import type { DailyRewind } from '../types'
 
 type DailyRewindsListProps = {
@@ -40,7 +41,7 @@ export function DailyRewindsList({
                 muted
                 playsInline
                 preload="metadata"
-                src={rewind.clips[0] ? `/videos/${rewind.clips[0].filename}` : undefined}
+                src={rewind.clips[0] ? resolveVideoUrl(rewind.clips[0]) : undefined}
               />
               <div className="rewinds-card__copy">
                 <strong>{rewind.isYou ? 'Your rewind' : `${rewind.ownerName}'s rewind`}</strong>
