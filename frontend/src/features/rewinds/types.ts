@@ -27,6 +27,7 @@ export type MultiRewind = {
   title: string;
   dateIsoString: string;
   participants: MultiRewindParticipant[];
+  friendIds: string[];
   createdBy: string;
   videoFilename: string | null;
   musicId?: string | null;

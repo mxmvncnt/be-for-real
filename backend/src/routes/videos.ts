@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path, { join } from 'node:path'
 import { Hono } from 'hono'
@@ -6,8 +6,16 @@ import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { friendsTable, usersTable, videosTable } from '../db/schema.js'
 import { getUserIdFromRequest } from '../utils/auth.js'
-import { concatVideos } from '../utils/ffmpeg.js'
-import { tmpdir } from 'node:os'
+import { stackFour, stackThree, stackTwo } from '../utils/ffmpeg.js'
+import {
+	fetchClipsForUserOnDate,
+	findVideoByFilename,
+	hashMultiRewind,
+	mashupFilename,
+	multiRewindFilename,
+	resolveMashupFilePath,
+	sortClipsStable,
+} from '../utils/mashup.js'
 import { existsSync } from 'node:fs'
 import { songs } from '../data/songs.js'
 import areUsersFriends from '../utils/friends.js'
@@ -27,6 +35,14 @@ type VideoFeedItem = {
 	isYou: boolean
 }
 
+const videoReturning = {
+	id: videosTable.id,
+	userId: videosTable.userId,
+	createdAt: videosTable.createdAt,
+	filename: videosTable.filename,
+	type: videosTable.type,
+}
+
 videos.get('/songs', (c) => {
 	return c.json(songs, 200)
 })
@@ -39,6 +55,29 @@ function getFileExtension(file: File) {
 	const originalExtension = path.extname(file.name).toLowerCase()
 	if (originalExtension) {
 		return originalExtension
+	}
+}
+
+function parseDateRange(dateParam: string) {
+	const date = new Date(dateParam)
+	const next = new Date(date)
+	next.setUTCDate(next.getUTCDate() + 1)
+	return { date, next }
+}
+
+async function stackParticipantVideos(inputPaths: string[], outputFile: string) {
+	switch (inputPaths.length) {
+		case 2:
+			await stackTwo(inputPaths as [string, string], outputFile)
+			return
+		case 3:
+			await stackThree(inputPaths as [string, string, string], outputFile)
+			return
+		case 4:
+			await stackFour(inputPaths as [string, string, string, string], outputFile)
+			return
+		default:
+			throw new Error(`Unsupported participant count: ${inputPaths.length}`)
 	}
 }
 
@@ -79,13 +118,7 @@ videos.post('/clips', async (c) => {
 			filename,
 			type: 'clip',
 		})
-		.returning({
-			id: videosTable.id,
-			userId: videosTable.userId,
-			createdAt: videosTable.createdAt,
-			filename: videosTable.filename,
-			type: videosTable.type,
-		})
+		.returning(videoReturning)
 
 	return c.json(video, 201)
 })
@@ -155,11 +188,7 @@ videos.get('/feed', async (c) => {
 })
 
 videos.post('/mashup/:date', async (c) => {
-	const { userId, musicId, friendsIds } = await c.req.json<{
-		userId: string
-		musicId: string
-		friendsIds: string[]
-	}>()
+	const { userId } = await c.req.json<{ userId: string; musicId?: string; friendsIds?: string[] }>()
 
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
@@ -170,82 +199,106 @@ videos.post('/mashup/:date', async (c) => {
 		return c.json({ error: 'you are not friend with this user' }, 401)
 	}
 
-	const dateParam = String(c.req.param('date'))
-	const date = new Date(dateParam)
-	const next = new Date(date)
-	next.setUTCDate(next.getUTCDate() + 1)
+	const { date, next } = parseDateRange(String(c.req.param('date')))
+	const clips = await fetchClipsForUserOnDate(userId, date, next)
 
-	const videos = await db
-		.select()
-		.from(videosTable)
-		.where(
-			and(
-				eq(videosTable.userId, userId),
-				gte(videosTable.createdAt, date),
-				lt(videosTable.createdAt, next),
-				eq(videosTable.type, 'clip'),
-			),
-		)
-
-	if (videos.length <= 0) {
+	if (clips.length <= 0) {
 		return c.json('no videos for selected date', 404)
 	}
 
-	// Sort into a stable order so the same set of source videos always
-	// hashes identically (and concatenates in the same order).
-	const sorted = [...videos].sort((a, b) => {
-		const t = a.createdAt.getTime() - b.createdAt.getTime()
-		return t !== 0 ? t : a.id.localeCompare(b.id)
-	})
+	const sorted = sortClipsStable(clips)
+	const { hash } = await resolveMashupFilePath(sorted, uploadsDir)
+	const filename = mashupFilename(hash)
 
-	const hash = createHash('sha256')
-		.update(sorted.map((video) => video.filename).join('\n'))
-		.digest('hex')
-	const filename = `mashup_${hash}.mp4`
-	const outputFile = join(uploadsDir, filename)
-
-	const [existing] = await db
-		.select({
-			id: videosTable.id,
-			userId: videosTable.userId,
-			createdAt: videosTable.createdAt,
-			filename: videosTable.filename,
-			type: videosTable.type,
-		})
-		.from(videosTable)
-		.where(and(eq(videosTable.filename, filename), eq(videosTable.type, 'mashup')))
-		.limit(1)
-
+	const existing = await findVideoByFilename(filename, 'mashup')
 	if (existing) {
 		return c.json(existing, 200)
-	}
-
-	// Only run the video edit if the output file isn't already on disk.
-	if (!existsSync(outputFile)) {
-		const filePaths = sorted.map((video) => `file ${join(uploadsDir, video.filename)}`)
-		const listPath = join(tmpdir(), `${hash}.txt`)
-		const manifest = filePaths.join('\n')
-		await writeFile(listPath, manifest, 'utf8')
-		await concatVideos(listPath, outputFile)
 	}
 
 	const [video] = await db
 		.insert(videosTable)
 		.values({
 			id: randomUUID(),
-			userId: userId,
+			userId,
 			createdAt: new Date(),
 			videoUrl: `/videos/${filename}`,
 			filename,
 			type: 'mashup',
 		})
-		.returning({
-			id: videosTable.id,
-			userId: videosTable.userId,
-			createdAt: videosTable.createdAt,
-			filename: videosTable.filename,
-			type: videosTable.type,
+		.returning(videoReturning)
+
+	return c.json(video, 201)
+})
+
+videos.post('/multi-rewind/:date', async (c) => {
+	const { friendsIds } = await c.req.json<{ friendsIds: string[] }>()
+
+	const currentUserId = await getUserIdFromRequest(c)
+	if (!currentUserId) {
+		return c.json({ error: 'Invalid or expired token' }, 401)
+	}
+
+	const uniqueFriendIds = [...new Set(friendsIds ?? [])].filter((friendId) => friendId !== currentUserId)
+	if (uniqueFriendIds.length < 1 || uniqueFriendIds.length > 3) {
+		return c.json({ error: 'Multi-Rewind requires 1 to 3 friends' }, 400)
+	}
+
+	for (const friendId of uniqueFriendIds) {
+		if (!(await areUsersFriends(currentUserId, friendId))) {
+			return c.json({ error: 'you are not friend with this user' }, 401)
+		}
+	}
+
+	const uniqueParticipantIds = [currentUserId, ...uniqueFriendIds]
+	const sortedParticipantIds = [...uniqueParticipantIds].sort()
+	const { date, next } = parseDateRange(String(c.req.param('date')))
+	const participantMashups: { participantId: string; hash: string; path: string }[] = []
+
+	for (const participantId of sortedParticipantIds) {
+		const clips = await fetchClipsForUserOnDate(participantId, date, next)
+		if (clips.length <= 0) {
+			return c.json({ error: 'no videos for selected date' }, 404)
+		}
+
+		const sorted = sortClipsStable(clips)
+		const mashup = await resolveMashupFilePath(sorted, uploadsDir)
+		participantMashups.push({
+			participantId,
+			hash: mashup.hash,
+			path: mashup.path,
 		})
+	}
+
+	const hash = hashMultiRewind(
+		sortedParticipantIds,
+		participantMashups.map((participant) => participant.hash),
+	)
+	const filename = multiRewindFilename(hash)
+	const outputFile = join(uploadsDir, filename)
+
+	const existing = await findVideoByFilename(filename, 'multi_rewind')
+	if (existing) {
+		return c.json(existing, 200)
+	}
+
+	if (!existsSync(outputFile)) {
+		await stackParticipantVideos(
+			participantMashups.map((participant) => participant.path),
+			outputFile,
+		)
+	}
+
+	const [video] = await db
+		.insert(videosTable)
+		.values({
+			id: randomUUID(),
+			userId: currentUserId,
+			createdAt: new Date(),
+			videoUrl: `/videos/${filename}`,
+			filename,
+			type: 'multi_rewind',
+		})
+		.returning(videoReturning)
 
 	return c.json(video, 201)
 })

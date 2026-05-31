@@ -38,7 +38,7 @@ export type CurrentUser = {
   profilePicUrl?: string | null;
 };
 
-export type VideoType = "clip" | "mashup";
+export type VideoType = "clip" | "mashup" | "multi_rewind";
 
 export type Video = {
   id: string;
@@ -173,6 +173,32 @@ export const api = {
           userId: payload.userId,
           musicId: payload.musicId ?? "",
           friendsIds: payload.friendsIds ?? [],
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return response.json() as Promise<Video>;
+  },
+  generateMultiRewind: async (
+    dateIsoString: string,
+    payload: { friendsIds: string[] },
+  ) => {
+    const date =
+      DateTime.fromISO(dateIsoString).startOf("day").toISO() ?? dateIsoString;
+    const response = await fetch(
+      `${API_BASE_URL}/videos/multi-rewind/${encodeURIComponent(date)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          friendsIds: payload.friendsIds,
         }),
       },
     );

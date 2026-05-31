@@ -452,16 +452,16 @@ const openApiDoc = {
 							schema: {
 								type: 'object',
 								properties: {
-									participantIds: {
+									friendsIds: {
 										type: 'array',
 										items: { type: 'string', format: 'uuid' },
-										minItems: 2,
-										maxItems: 4,
+										minItems: 1,
+										maxItems: 3,
 										description:
-											'User IDs to include in the stack. Must include the creator and at most 4 people total.',
+											'Friend user IDs to stack with the creator. At most 3 friends (4 people total).',
 									},
 								},
-								required: ['participantIds'],
+								required: ['friendsIds'],
 							},
 						},
 					},
@@ -469,7 +469,7 @@ const openApiDoc = {
 				responses: {
 					'200': { description: 'Existing Multi-Rewind returned' },
 					'201': { description: 'Multi-Rewind created' },
-					'400': { description: 'Invalid participant count or creator not included' },
+					'400': { description: 'Invalid friend count' },
 					'401': { description: 'Missing or invalid token, or not friends with a participant' },
 					'404': { description: 'No clips for selected date' },
 				},

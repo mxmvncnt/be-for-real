@@ -361,7 +361,7 @@ export function RewindsPage() {
         return previous.filter((existingId) => existingId !== friendId)
       }
 
-      if (previous.length >= 4) {
+      if (previous.length >= 3) {
         return previous
       }
 
@@ -413,6 +413,7 @@ export function RewindsPage() {
         .replace('Rewind', 'Multi-Rewind')}`,
       dateIsoString: selectedDay.dateIsoString,
       participants: participantRewinds,
+      friendIds: selectedMultiFriendIds,
       createdBy: 'You',
       videoFilename: null,
       musicId: selectedMusicId,
@@ -434,10 +435,8 @@ export function RewindsPage() {
     setGeneratingMultiId(rewind.id)
 
     try {
-      const video = await api.generateMashup(rewind.dateIsoString, {
-        userId: rewind.participants[0]?.ownerId ?? '',
-        musicId: rewind.musicId ?? undefined,
-        friendsIds: rewind.participants.slice(1).map((participant) => participant.ownerId),
+      const video = await api.generateMultiRewind(rewind.dateIsoString, {
+        friendsIds: rewind.friendIds,
       })
       setMultiRewinds((previous) =>
         previous.map((existingRewind) =>

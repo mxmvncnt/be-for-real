@@ -52,7 +52,7 @@ export function MultiRewindComposerModal({
         </div>
 
         <div className="composer-step">
-          <h3>Pick up to 4 friends</h3>
+          <h3>Pick up to 3 friends</h3>
           <p>
             First choose one of your rewind days, then pick friends who also recorded that same day.
           </p>
@@ -77,7 +77,7 @@ export function MultiRewindComposerModal({
         </div>
 
         <div className="composer-step">
-          <h3>Pick up to 4 friends</h3>
+          <h3>Pick up to 3 friends</h3>
           <p>The result uses equal-size panels for everyone, including you.</p>
           <div className="composer-friend-list">
             {selectedComposerDay && composerFriendOptions.length === 0 ? (
@@ -91,7 +91,7 @@ export function MultiRewindComposerModal({
                     checked={selectedMultiFriendIds.includes(friend.id)}
                     disabled={
                       !selectedMultiFriendIds.includes(friend.id) &&
-                      selectedMultiFriendIds.length >= 4
+                      selectedMultiFriendIds.length >= 3
                     }
                     type="checkbox"
                     onChange={() => onToggleFriend(friend.id)}
