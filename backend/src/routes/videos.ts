@@ -153,7 +153,13 @@ videos.get('/mashup/:date', async (c) => {
 	const videos = await db
 		.select()
 		.from(videosTable)
-		.where(and(gte(videosTable.createdAt, date), lt(videosTable.createdAt, next)))
+		.where(
+			and(
+				gte(videosTable.createdAt, date),
+				lt(videosTable.createdAt, next),
+				eq(videosTable.type, 'clip'),
+			),
+		)
 
 	if (videos.length <= 0) {
 		return c.json('no videos for selected date', 404)
