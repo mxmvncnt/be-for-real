@@ -9,6 +9,7 @@ import { getUserIdFromRequest } from '../utils/auth.js'
 import { concatVideos } from '../utils/ffmpeg.js'
 import { tmpdir } from 'node:os'
 import { existsSync } from 'node:fs'
+import { songs } from '../data/songs.js'
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
@@ -24,6 +25,10 @@ type VideoFeedItem = {
 	type: VideoType
 	isYou: boolean
 }
+
+videos.get('/songs', (c) => {
+	return c.json(songs, 200)
+})
 
 function getFileExtension(file: File) {
 	const originalExtension = path.extname(file.name).toLowerCase()
