@@ -141,4 +141,9 @@ export const api = {
     request<RewindVideo[]>("/videos/feed", {
       headers: getAuthHeaders(),
     }),
+  logout: () => 
+    request<{ ok:boolean }>("/auth/logout", {
+      method: "POST",
+      headers: getAuthHeaders(),
+    }),
 };

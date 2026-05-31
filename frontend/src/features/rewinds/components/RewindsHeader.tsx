@@ -1,6 +1,21 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { api } from "../../../lib/api";
 
 export function RewindsHeader() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      window.localStorage.removeItem("bfr.token");
+      window.localStorage.removeItem("bfr.email");
+      window.localStorage.removeItem("bfr.username");
+      navigate("/");
+    }
+  };
   return (
     <header className="rewinds-topbar">
       <h1>My profile</h1>
@@ -12,18 +27,14 @@ export function RewindsHeader() {
         <span className="window-actions__button" aria-hidden="true">
           □
         </span>
-        <Link
+        <button
+          type="button"
           aria-label="Disconnect and return to login"
           className="window-actions__button window-actions__button--close rewinds-logout"
-          to="/"
-          onClick={() => {
-            window.localStorage.removeItem("bfr.token");
-            window.localStorage.removeItem("bfr.email");
-            window.localStorage.removeItem("bfr.username");
-          }}
+          onClick={handleLogout}
         >
           Off
-        </Link>
+        </button>
       </div>
     </header>
   );
