@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 import { desc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { friendsTable, sessionsTable, usersTable, videosTable } from '../db/schema.js'
+import {getUserIdFromRequest} from "../utils/auth.js";
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
@@ -19,44 +20,15 @@ type VideoFeedItem = {
   isYou: boolean
 }
 
-async function getCurrentUserId(token: string | undefined) {
-  if (!token) {
-    return null
-  }
-
-  const sessionRows = await db
-    .select()
-    .from(sessionsTable)
-    .where(eq(sessionsTable.token, token))
-    .limit(1)
-
-  if (sessionRows.length === 0) {
-    return null
-  }
-
-  return String(sessionRows[0].userId)
-}
-
 function getFileExtension(file: File) {
-  const originalExtension = path.extname(file.name ?? '').toLowerCase()
+  const originalExtension = path.extname(file.name).toLowerCase()
   if (originalExtension) {
     return originalExtension
-  }
-
-  switch (file.type) {
-    case 'video/mp4':
-      return '.mp4'
-    case 'video/webm':
-      return '.webm'
-    case 'video/quicktime':
-      return '.mov'
-    default:
-      return '.webm'
   }
 }
 
 videos.post('/clips', async (c) => {
-  const currentUserId = await getCurrentUserId(c.req.header('authorization'))
+  const currentUserId = await getUserIdFromRequest(c)
   if (!currentUserId) {
     return c.json({ error: 'Invalid or expired token' }, 401)
   }
@@ -64,7 +36,7 @@ videos.post('/clips', async (c) => {
   const formData = await c.req.formData()
   const file = formData.get('video')
 
-  if (!(file instanceof File)) {
+  if (!file || !(file instanceof File)) {
     return c.json({ error: 'Missing video file' }, 400)
   }
 
@@ -73,12 +45,7 @@ videos.post('/clips', async (c) => {
   const extension = getFileExtension(file)
   const filename = `${randomUUID()}${extension}`
   const absoluteFilePath = path.join(uploadsDir, filename)
-  const createdAtValue = String(formData.get('createdAt') ?? '')
-  const createdAt = createdAtValue ? new Date(createdAtValue) : new Date()
-
-  if (Number.isNaN(createdAt.getTime())) {
-    return c.json({ error: 'Invalid createdAt value' }, 400)
-  }
+  const createdAt = new Date()
 
   const buffer = Buffer.from(await file.arrayBuffer())
   await writeFile(absoluteFilePath, buffer)
@@ -106,7 +73,7 @@ videos.post('/clips', async (c) => {
 })
 
 videos.get('/feed', async (c) => {
-  const currentUserId = await getCurrentUserId(c.req.header('authorization'))
+  const currentUserId = await getUserIdFromRequest(c)
   if (!currentUserId) {
     return c.json({ error: 'Invalid or expired token' }, 401)
   }
