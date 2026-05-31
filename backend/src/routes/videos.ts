@@ -1,22 +1,21 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path, { join } from 'node:path'
 import { Hono } from 'hono'
 import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { friendsTable, usersTable, videosTable } from '../db/schema.js'
 import { getUserIdFromRequest } from '../utils/auth.js'
-import { stackFour, stackThree, stackTwo } from '../utils/ffmpeg.js'
+import { concatVideos, stackFour, stackThree, stackTwo } from '../utils/ffmpeg.js'
 import {
 	fetchClipsForUserOnDate,
 	findVideoByFilename,
-	hashMultiRewind,
+	hashFilenames,
 	mashupFilename,
-	multiRewindFilename,
-	resolveMashupFilePath,
 	sortClipsStable,
 } from '../utils/mashup.js'
-import { existsSync } from 'node:fs'
 import { songs } from '../data/songs.js'
 import areUsersFriends from '../utils/friends.js'
 
@@ -65,20 +64,23 @@ function parseDateRange(dateParam: string) {
 	return { date, next }
 }
 
-async function stackParticipantVideos(inputPaths: string[], outputFile: string) {
-	switch (inputPaths.length) {
-		case 2:
-			await stackTwo(inputPaths as [string, string], outputFile)
-			return
-		case 3:
-			await stackThree(inputPaths as [string, string, string], outputFile)
-			return
-		case 4:
-			await stackFour(inputPaths as [string, string, string, string], outputFile)
-			return
-		default:
-			throw new Error(`Unsupported participant count: ${inputPaths.length}`)
+async function ensureMashupFile(
+	sortedClips: { filename: string }[],
+	uploadsDir: string,
+): Promise<string> {
+	const hash = hashFilenames(sortedClips.map((clip) => clip.filename))
+	const outputFile = join(uploadsDir, mashupFilename(hash))
+
+	if (!existsSync(outputFile)) {
+		const listPath = join(tmpdir(), `${hash}.txt`)
+		const manifest = sortedClips
+			.map((clip) => `file ${join(uploadsDir, clip.filename)}`)
+			.join('\n')
+		await writeFile(listPath, manifest, 'utf8')
+		await concatVideos(listPath, outputFile)
 	}
+
+	return outputFile
 }
 
 /**
@@ -207,12 +209,20 @@ videos.post('/mashup/:date', async (c) => {
 	}
 
 	const sorted = sortClipsStable(clips)
-	const { hash } = await resolveMashupFilePath(sorted, uploadsDir)
+	const hash = hashFilenames(sorted.map((clip) => clip.filename))
 	const filename = mashupFilename(hash)
+	const outputFile = join(uploadsDir, filename)
 
 	const existing = await findVideoByFilename(filename, 'mashup')
 	if (existing) {
 		return c.json(existing, 200)
+	}
+
+	if (!existsSync(outputFile)) {
+		const listPath = join(tmpdir(), `${hash}.txt`)
+		const manifest = sorted.map((clip) => `file ${join(uploadsDir, clip.filename)}`).join('\n')
+		await writeFile(listPath, manifest, 'utf8')
+		await concatVideos(listPath, outputFile)
 	}
 
 	const [video] = await db
@@ -238,7 +248,9 @@ videos.post('/multi-rewind/:date', async (c) => {
 		return c.json({ error: 'Invalid or expired token' }, 401)
 	}
 
-	const uniqueFriendIds = [...new Set(friendsIds ?? [])].filter((friendId) => friendId !== currentUserId)
+	const uniqueFriendIds = [...new Set(friendsIds ?? [])].filter(
+		(friendId) => friendId !== currentUserId,
+	)
 	if (uniqueFriendIds.length < 1 || uniqueFriendIds.length > 3) {
 		return c.json({ error: 'Multi-Rewind requires 1 to 3 friends' }, 400)
 	}
@@ -249,31 +261,26 @@ videos.post('/multi-rewind/:date', async (c) => {
 		}
 	}
 
-	const uniqueParticipantIds = [currentUserId, ...uniqueFriendIds]
-	const sortedParticipantIds = [...uniqueParticipantIds].sort()
+	const participantIds = [currentUserId, ...uniqueFriendIds].sort()
 	const { date, next } = parseDateRange(String(c.req.param('date')))
-	const participantMashups: { participantId: string; hash: string; path: string }[] = []
+	const mashupPaths: string[] = []
+	const mashupHashes: string[] = []
 
-	for (const participantId of sortedParticipantIds) {
+	for (const participantId of participantIds) {
 		const clips = await fetchClipsForUserOnDate(participantId, date, next)
 		if (clips.length <= 0) {
 			return c.json({ error: 'no videos for selected date' }, 404)
 		}
 
 		const sorted = sortClipsStable(clips)
-		const mashup = await resolveMashupFilePath(sorted, uploadsDir)
-		participantMashups.push({
-			participantId,
-			hash: mashup.hash,
-			path: mashup.path,
-		})
+		mashupHashes.push(hashFilenames(sorted.map((clip) => clip.filename)))
+		mashupPaths.push(await ensureMashupFile(sorted, uploadsDir))
 	}
 
-	const hash = hashMultiRewind(
-		sortedParticipantIds,
-		participantMashups.map((participant) => participant.hash),
-	)
-	const filename = multiRewindFilename(hash)
+	const hash = createHash('sha256')
+		.update([...participantIds, ...mashupHashes].join('\n'))
+		.digest('hex')
+	const filename = `multi_rewind_${hash}.mp4`
 	const outputFile = join(uploadsDir, filename)
 
 	const existing = await findVideoByFilename(filename, 'multi_rewind')
@@ -282,10 +289,13 @@ videos.post('/multi-rewind/:date', async (c) => {
 	}
 
 	if (!existsSync(outputFile)) {
-		await stackParticipantVideos(
-			participantMashups.map((participant) => participant.path),
-			outputFile,
-		)
+		if (mashupPaths.length === 2) {
+			await stackTwo(mashupPaths as [string, string], outputFile)
+		} else if (mashupPaths.length === 3) {
+			await stackThree(mashupPaths as [string, string, string], outputFile)
+		} else {
+			await stackFour(mashupPaths as [string, string, string, string], outputFile)
+		}
 	}
 
 	const [video] = await db
