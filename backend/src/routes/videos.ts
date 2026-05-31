@@ -63,7 +63,7 @@ videos.post('/clips', async (c) => {
 			id: randomUUID(),
 			userId: currentUserId,
 			createdAt,
-			videoUrl: filename,
+			videoUrl: `/uploads/${filename}`,
 			filename,
 			type: 'clip',
 		})
@@ -174,9 +174,9 @@ videos.get('/mashup/:date', async (c) => {
 			id: randomUUID(),
 			userId: userId,
 			createdAt: new Date(),
-			videoUrl: filename,
+			videoUrl: `/uploads/${filename}`,
 			filename,
-			type: 'clip',
+			type: 'mashup',
 		})
 		.returning({
 			id: videosTable.id,
