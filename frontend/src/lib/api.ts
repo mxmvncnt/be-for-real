@@ -52,7 +52,7 @@ export type Song = {
   id: string;
   title: string;
   fileName: string;
-  startTimestamp: string;
+  startSeconds: number;
 };
 
 export type RewindVideo = Video & {
