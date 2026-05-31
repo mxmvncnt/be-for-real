@@ -102,9 +102,22 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
     }),
+  acceptFriendRequest: (friendId: string) =>
+    request<{ message: string }>(`/friend/${friendId}/accept`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    }),
   removeFriend: (friendId: string) =>
     request<{ message: string }>(`/friend/${friendId}/remove`, {
       method: "POST",
+      headers: getAuthHeaders(),
+    }),
+  getFriendRequestsReceived: () =>
+    request<Friend[]>("/friend/requests/received", {
+      headers: getAuthHeaders(),
+    }),
+  getFriendRequestsSent: () =>
+    request<Friend[]>("/friend/requests/sent", {
       headers: getAuthHeaders(),
     }),
   uploadClip: async (video: Blob, createdAt: string) => {
