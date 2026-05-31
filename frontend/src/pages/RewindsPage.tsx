@@ -161,7 +161,7 @@ export function RewindsPage() {
     setGeneratingRewindId(rewind.id)
 
     try {
-      const video = await api.generateMashup(rewind.dateIsoString)
+      const video = await api.generateMashup(rewind.dateIsoString, rewind.ownerId)
       const videoUrl = resolveVideoUrl(video)
       setGeneratedRewindUrls((previous) => ({
         ...previous,
@@ -400,7 +400,10 @@ export function RewindsPage() {
     setGeneratingMultiId(rewind.id)
 
     try {
-      const video = await api.generateMashup(rewind.dateIsoString)
+      const video = await api.generateMashup(
+        rewind.dateIsoString,
+        rewind.participants[0]?.ownerId ?? '',
+      )
       setMultiRewinds((previous) =>
         previous.map((existingRewind) =>
           existingRewind.id === rewind.id ? { ...existingRewind, videoFilename: video.filename } : existingRewind,
