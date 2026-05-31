@@ -147,7 +147,7 @@ export function RewindsPage() {
       }))
     } catch (error) {
       console.error(error)
-      setRewindRenderError('Could not compile this rewind on this device.')
+      setRewindRenderError('error')
     } finally {
       setRenderingRewindId(null)
     }
