@@ -335,6 +335,7 @@ export function CameraPage() {
       <CameraPreview
         activeFilterClassName={activeFilter.className}
         cameraError={cameraError}
+        cameraFacingMode={cameraFacingMode}
         clipUrl={clipUrl}
         liveVideoRef={liveVideoRef}
         playbackVideoRef={playbackVideoRef}
@@ -440,6 +441,7 @@ function CameraHeader() {
 
 function CameraPreview({
   activeFilterClassName,
+  cameraFacingMode,
   clipUrl,
   playbackVideoRef,
   liveVideoRef,
@@ -447,6 +449,7 @@ function CameraPreview({
   cameraError,
 }: {
   activeFilterClassName: string
+  cameraFacingMode: 'user' | 'environment'
   clipUrl: string | null
   playbackVideoRef: { current: HTMLVideoElement | null }
   liveVideoRef: { current: HTMLVideoElement | null }
@@ -472,7 +475,7 @@ function CameraPreview({
             <video
               ref={liveVideoRef}
               autoPlay
-              className="camera-video"
+              className={`camera-video ${cameraFacingMode === 'user' ? 'camera-video--mirrored' : ''}`.trim()}
               muted
               playsInline
             />
