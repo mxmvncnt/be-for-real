@@ -151,7 +151,7 @@ videos.get('/feed', async (c) => {
 })
 
 videos.get('/mashup/:date/:userId', async (c) => {
-	const userId = String(c.req.param('friendId'))
+	const userId = String(c.req.param('userId'))
 
 	const currentUserId = await getUserIdFromRequest(c)
 	if (!currentUserId) {
