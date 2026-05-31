@@ -1,4 +1,4 @@
-import type { Friend } from '../../../lib/api'
+import type { Friend, Song } from '../../../lib/api'
 import type { DailyRewind } from '../types'
 
 type ComposerFriendOption = {
@@ -11,12 +11,17 @@ type MultiRewindComposerModalProps = {
   selectedComposerDay: DailyRewind | null
   composerFriendOptions: ComposerFriendOption[]
   friends: Friend[]
+  songs: Song[]
+  songsLoading: boolean
+  songsError: string | null
   selectedMultiFriendIds: string[]
+  selectedMusicId: string | null
   composerError: string | null
   onClose: () => void
   onComposerDayChange: (rewindId: string) => void
   onToggleFriend: (friendId: string) => void
   onCreate: () => void
+  onSelectMusic: (musicId: string | null) => void
 }
 
 export function MultiRewindComposerModal({
@@ -24,12 +29,17 @@ export function MultiRewindComposerModal({
   selectedComposerDay,
   composerFriendOptions,
   friends,
+  songs,
+  songsLoading,
+  songsError,
   selectedMultiFriendIds,
+  selectedMusicId,
   composerError,
   onClose,
   onComposerDayChange,
   onToggleFriend,
   onCreate,
+  onSelectMusic,
 }: MultiRewindComposerModalProps) {
   return (
     <div className="composer-overlay" role="dialog" aria-modal="true" aria-labelledby="composer-title">
@@ -42,7 +52,7 @@ export function MultiRewindComposerModal({
         </div>
 
         <div className="composer-step">
-          <h3>Pick up to 5 friends</h3>
+          <h3>Pick up to 4 friends</h3>
           <p>
             First choose one of your rewind days, then pick friends who also recorded that same day.
           </p>
@@ -67,7 +77,7 @@ export function MultiRewindComposerModal({
         </div>
 
         <div className="composer-step">
-          <h3>Pick up to 5 friends</h3>
+          <h3>Pick up to 4 friends</h3>
           <p>The result uses equal-size panels for everyone, including you.</p>
           <div className="composer-friend-list">
             {selectedComposerDay && composerFriendOptions.length === 0 ? (
@@ -81,7 +91,7 @@ export function MultiRewindComposerModal({
                     checked={selectedMultiFriendIds.includes(friend.id)}
                     disabled={
                       !selectedMultiFriendIds.includes(friend.id) &&
-                      selectedMultiFriendIds.length >= 5
+                      selectedMultiFriendIds.length >= 4
                     }
                     type="checkbox"
                     onChange={() => onToggleFriend(friend.id)}
@@ -92,6 +102,32 @@ export function MultiRewindComposerModal({
               ))
             )}
           </div>
+        </div>
+
+        <div className="composer-step">
+          <h3>Pick a song</h3>
+          <p>Choose which track will drive the mashup.</p>
+          {songsLoading ? (
+            <p className="friends-panel__message">Loading songs...</p>
+          ) : songsError ? (
+            <p className="friends-panel__message">{songsError}</p>
+          ) : songs.length === 0 ? (
+            <p className="friends-panel__message">No songs available yet.</p>
+          ) : (
+            <label className="composer-song">
+              <span>Song</span>
+              <select
+                value={selectedMusicId ?? ''}
+                onChange={(event) => onSelectMusic(event.target.value || null)}
+              >
+                {songs.map((song) => (
+                  <option key={song.id} value={song.id}>
+                    {song.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
         {composerError ? <p className="friends-panel__message">{composerError}</p> : null}
@@ -116,7 +152,7 @@ export function MultiRewindComposerModal({
           </button>
           <button
             className="composer-button composer-button--primary"
-            disabled={selectedMultiFriendIds.length === 0}
+            disabled={selectedMultiFriendIds.length === 0 || !selectedMusicId}
             type="button"
             onClick={onCreate}
           >

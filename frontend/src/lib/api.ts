@@ -187,7 +187,7 @@ export const api = {
     request<RewindVideo[]>("/videos/feed", {
       headers: getAuthHeaders(),
     }),
-  getSongs: () => request<Song[]>("/videos/songs"),
+  getSongs: () => request<Song[]>("/videos/music"),
   logout: () =>
     request<{ ok: boolean }>("/auth/logout", {
       method: "POST",

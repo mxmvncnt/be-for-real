@@ -354,6 +354,34 @@ const openApiDoc = {
 				},
 			},
 		},
+		'/videos/music': {
+			get: {
+				summary: 'Get available mashup music (alias)',
+				tags: ['Videos'],
+				responses: {
+					'200': {
+						description: 'Song catalog',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'array',
+									items: {
+										type: 'object',
+										properties: {
+											id: { type: 'string' },
+											title: { type: 'string' },
+											fileName: { type: 'string' },
+											startSeconds: { type: 'number' },
+										},
+										required: ['id', 'title', 'fileName', 'startSeconds'],
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 		'/videos/mashup/{date}': {
 			post: {
 				summary: 'Create or retrieve a mashup for a user on a date',
