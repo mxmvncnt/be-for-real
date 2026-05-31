@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path, { join } from 'node:path'
@@ -21,6 +21,21 @@ import areUsersFriends from '../utils/friends.js'
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
+const MIN_VIDEO_BYTES = 1024
+const mashupJobs = new Map<string, Promise<string>>()
+
+function logVideoStep(step: string, details?: Record<string, unknown>) {
+	const suffix = details ? ` ${JSON.stringify(details)}` : ''
+	console.log(`[video] ${step}${suffix}`)
+}
+
+async function timedVideoStep<T>(step: string, fn: () => Promise<T>, details?: Record<string, unknown>) {
+	const startedAt = Date.now()
+	logVideoStep(`${step} started`, details)
+	const result = await fn()
+	logVideoStep(`${step} finished`, { ...details, durationMs: Date.now() - startedAt })
+	return result
+}
 
 type VideoType = 'clip' | 'mashup' | 'multi_rewind'
 
@@ -64,23 +79,85 @@ function parseDateRange(dateParam: string) {
 	return { date, next }
 }
 
+function getVideoFileSize(filePath: string) {
+	try {
+		return statSync(filePath).size
+	} catch {
+		return 0
+	}
+}
+
+function isUsableVideoFile(filePath: string) {
+	return existsSync(filePath) && getVideoFileSize(filePath) >= MIN_VIDEO_BYTES
+}
+
+async function concatMashupFile(
+	sortedClips: { filename: string }[],
+	uploadsDir: string,
+	hash: string,
+	outputFile: string,
+	participantId?: string,
+) {
+	const listPath = join(tmpdir(), `${hash}.txt`)
+	const manifest = sortedClips.map((clip) => `file ${join(uploadsDir, clip.filename)}`).join('\n')
+	await writeFile(listPath, manifest, 'utf8')
+
+	await timedVideoStep(
+		'mashup concat',
+		() => concatVideos(listPath, outputFile),
+		{ participantId, filename: mashupFilename(hash), clipCount: sortedClips.length },
+	)
+
+	if (!isUsableVideoFile(outputFile)) {
+		throw new Error(`Mashup file was not created: ${mashupFilename(hash)}`)
+	}
+}
+
 async function ensureMashupFile(
 	sortedClips: { filename: string }[],
 	uploadsDir: string,
+	participantId?: string,
 ): Promise<string> {
 	const hash = hashFilenames(sortedClips.map((clip) => clip.filename))
 	const outputFile = join(uploadsDir, mashupFilename(hash))
-
-	if (!existsSync(outputFile)) {
-		const listPath = join(tmpdir(), `${hash}.txt`)
-		const manifest = sortedClips
-			.map((clip) => `file ${join(uploadsDir, clip.filename)}`)
-			.join('\n')
-		await writeFile(listPath, manifest, 'utf8')
-		await concatVideos(listPath, outputFile)
+	const inFlight = mashupJobs.get(hash)
+	if (inFlight) {
+		logVideoStep('mashup waiting for in-flight concat', {
+			participantId,
+			filename: mashupFilename(hash),
+		})
+		return inFlight
 	}
 
-	return outputFile
+	const job = (async () => {
+		if (isUsableVideoFile(outputFile)) {
+			logVideoStep('mashup reused', {
+				participantId,
+				filename: mashupFilename(hash),
+				clipCount: sortedClips.length,
+				bytes: getVideoFileSize(outputFile),
+			})
+			return outputFile
+		}
+
+		logVideoStep('mashup concat started', {
+			participantId,
+			filename: mashupFilename(hash),
+			clipCount: sortedClips.length,
+			clips: sortedClips.map((clip) => clip.filename),
+		})
+
+		await concatMashupFile(sortedClips, uploadsDir, hash, outputFile, participantId)
+		return outputFile
+	})()
+
+	mashupJobs.set(hash, job)
+
+	try {
+		return await job
+	} finally {
+		mashupJobs.delete(hash)
+	}
 }
 
 /**
@@ -201,10 +278,14 @@ videos.post('/mashup/:date', async (c) => {
 		return c.json({ error: 'you are not friend with this user' }, 401)
 	}
 
-	const { date, next } = parseDateRange(String(c.req.param('date')))
+	const dateParam = String(c.req.param('date'))
+	logVideoStep('mashup request started', { userId, date: dateParam, requestedBy: currentUserId })
+
+	const { date, next } = parseDateRange(dateParam)
 	const clips = await fetchClipsForUserOnDate(userId, date, next)
 
 	if (clips.length <= 0) {
+		logVideoStep('mashup request failed', { userId, date: dateParam, reason: 'no clips' })
 		return c.json('no videos for selected date', 404)
 	}
 
@@ -213,16 +294,18 @@ videos.post('/mashup/:date', async (c) => {
 	const filename = mashupFilename(hash)
 	const outputFile = join(uploadsDir, filename)
 
+	logVideoStep('mashup clips loaded', { userId, clipCount: sorted.length, filename })
+
 	const existing = await findVideoByFilename(filename, 'mashup')
 	if (existing) {
+		logVideoStep('mashup cache hit', { userId, filename, videoId: existing.id })
 		return c.json(existing, 200)
 	}
 
-	if (!existsSync(outputFile)) {
-		const listPath = join(tmpdir(), `${hash}.txt`)
-		const manifest = sorted.map((clip) => `file ${join(uploadsDir, clip.filename)}`).join('\n')
-		await writeFile(listPath, manifest, 'utf8')
-		await concatVideos(listPath, outputFile)
+	if (isUsableVideoFile(outputFile)) {
+		logVideoStep('mashup file reused', { userId, filename, bytes: getVideoFileSize(outputFile) })
+	} else {
+		await concatMashupFile(sorted, uploadsDir, hash, outputFile, userId)
 	}
 
 	const [video] = await db
@@ -236,6 +319,8 @@ videos.post('/mashup/:date', async (c) => {
 			type: 'mashup',
 		})
 		.returning(videoReturning)
+
+	logVideoStep('mashup request finished', { userId, filename, videoId: video.id })
 
 	return c.json(video, 201)
 })
@@ -262,19 +347,31 @@ videos.post('/multi-rewind/:date', async (c) => {
 	}
 
 	const participantIds = [currentUserId, ...uniqueFriendIds].sort()
-	const { date, next } = parseDateRange(String(c.req.param('date')))
+	const dateParam = String(c.req.param('date'))
+	logVideoStep('multi-rewind request started', {
+		userId: currentUserId,
+		date: dateParam,
+		participantIds,
+	})
+
+	const { date, next } = parseDateRange(dateParam)
 	const mashupPaths: string[] = []
 	const mashupHashes: string[] = []
 
 	for (const participantId of participantIds) {
 		const clips = await fetchClipsForUserOnDate(participantId, date, next)
 		if (clips.length <= 0) {
+			logVideoStep('multi-rewind request failed', {
+				participantId,
+				date: dateParam,
+				reason: 'no clips',
+			})
 			return c.json({ error: 'no videos for selected date' }, 404)
 		}
 
 		const sorted = sortClipsStable(clips)
 		mashupHashes.push(hashFilenames(sorted.map((clip) => clip.filename)))
-		mashupPaths.push(await ensureMashupFile(sorted, uploadsDir))
+		mashupPaths.push(await ensureMashupFile(sorted, uploadsDir, participantId))
 	}
 
 	const hash = createHash('sha256')
@@ -283,19 +380,60 @@ videos.post('/multi-rewind/:date', async (c) => {
 	const filename = `multi_rewind_${hash}.mp4`
 	const outputFile = join(uploadsDir, filename)
 
+	logVideoStep('multi-rewind mashups ready', {
+		filename,
+		participantCount: participantIds.length,
+		inputs: mashupPaths.map((inputPath) => ({
+			path: inputPath,
+			bytes: getVideoFileSize(inputPath),
+		})),
+	})
+
 	const existing = await findVideoByFilename(filename, 'multi_rewind')
 	if (existing) {
+		logVideoStep('multi-rewind cache hit', { filename, videoId: existing.id })
 		return c.json(existing, 200)
 	}
 
-	if (!existsSync(outputFile)) {
-		if (mashupPaths.length === 2) {
-			await stackTwo(mashupPaths as [string, string], outputFile)
-		} else if (mashupPaths.length === 3) {
-			await stackThree(mashupPaths as [string, string, string], outputFile)
+	try {
+		if (isUsableVideoFile(outputFile)) {
+			logVideoStep('multi-rewind file reused', {
+				filename,
+				bytes: getVideoFileSize(outputFile),
+			})
 		} else {
-			await stackFour(mashupPaths as [string, string, string, string], outputFile)
+			const stackStep =
+				mashupPaths.length === 2 ? 'stackTwo' : mashupPaths.length === 3 ? 'stackThree' : 'stackFour'
+
+			await timedVideoStep(
+				stackStep,
+				async () => {
+					if (mashupPaths.length === 2) {
+						await stackTwo(mashupPaths as [string, string], outputFile)
+						return
+					}
+
+					if (mashupPaths.length === 3) {
+						await stackThree(mashupPaths as [string, string, string], outputFile)
+						return
+					}
+
+					await stackFour(mashupPaths as [string, string, string, string], outputFile)
+				},
+				{ filename, inputs: mashupPaths },
+			)
+
+			if (!isUsableVideoFile(outputFile)) {
+				throw new Error(`Multi-rewind file was not created: ${filename}`)
+			}
 		}
+	} catch (error) {
+		logVideoStep('multi-rewind stack failed', {
+			filename,
+			inputs: mashupPaths,
+			error: error instanceof Error ? error.message : String(error),
+		})
+		return c.json({ error: 'Failed to generate multi-rewind' }, 500)
 	}
 
 	const [video] = await db
@@ -309,6 +447,12 @@ videos.post('/multi-rewind/:date', async (c) => {
 			type: 'multi_rewind',
 		})
 		.returning(videoReturning)
+
+	logVideoStep('multi-rewind request finished', {
+		filename,
+		videoId: video.id,
+		participantCount: participantIds.length,
+	})
 
 	return c.json(video, 201)
 })
