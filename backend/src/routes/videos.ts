@@ -16,7 +16,7 @@ type VideoFeedItem = {
   username: string
   createdAt: string
   videoUrl: string
-  type: string | null
+  type: 'clip' | 'mashup'
   isYou: boolean
 }
 
