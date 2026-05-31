@@ -811,7 +811,7 @@ button.window-actions__button {
 .camera-video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .camera-video--mirrored {
