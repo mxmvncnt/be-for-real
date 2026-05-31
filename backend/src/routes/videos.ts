@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path, { join } from 'node:path'
 import { Hono } from 'hono'
@@ -8,6 +8,7 @@ import { friendsTable, usersTable, videosTable } from '../db/schema.js'
 import { getUserIdFromRequest } from '../utils/auth.js'
 import { concatVideos } from '../utils/ffmpeg.js'
 import { tmpdir } from 'node:os'
+import { existsSync } from 'node:fs'
 
 const videos = new Hono()
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
@@ -158,15 +159,44 @@ videos.get('/mashup/:date', async (c) => {
 		return c.json('no videos for selected date', 404)
 	}
 
-	const filePaths = videos.map((video) => `file ${uploadsDir}/${video.filename}`)
+	// Sort into a stable order so the same set of source videos always
+	// hashes identically (and concatenates in the same order).
+	const sorted = [...videos].sort((a, b) => {
+		const t = a.createdAt.getTime() - b.createdAt.getTime()
+		return t !== 0 ? t : a.id.localeCompare(b.id)
+	})
 
-	const uuid = randomUUID()
-	const filename = `mashup_${uuid}.mp4`
+	const hash = createHash('sha256')
+		.update(sorted.map((video) => video.filename).join('\n'))
+		.digest('hex')
+	const filename = `mashup_${hash}.mp4`
 	const outputFile = join(uploadsDir, filename)
-	const listPath = join(tmpdir(), `${uuid}.txt`)
-	const manifest = filePaths.join('\n')
-	await writeFile(listPath, manifest, 'utf8')
-	await concatVideos(listPath, outputFile)
+
+	const [existing] = await db
+		.select({
+			id: videosTable.id,
+			userId: videosTable.userId,
+			createdAt: videosTable.createdAt,
+			videoUrl: videosTable.videoUrl,
+			filename: videosTable.filename,
+			type: videosTable.type,
+		})
+		.from(videosTable)
+		.where(and(eq(videosTable.filename, filename), eq(videosTable.type, 'mashup')))
+		.limit(1)
+
+	if (existing) {
+		return c.json(existing, 200)
+	}
+
+	// Only run the video edit if the output file isn't already on disk.
+	if (!existsSync(outputFile)) {
+		const filePaths = sorted.map((video) => `file ${uploadsDir}/${video.filename}`)
+		const listPath = join(tmpdir(), `${hash}.txt`)
+		const manifest = filePaths.join('\n')
+		await writeFile(listPath, manifest, 'utf8')
+		await concatVideos(listPath, outputFile)
+	}
 
 	const [video] = await db
 		.insert(videosTable)
