@@ -165,6 +165,7 @@ videos.get('/mashup/:date', async (c) => {
 		.from(videosTable)
 		.where(
 			and(
+				eq(videosTable.userId, userId),
 				gte(videosTable.createdAt, date),
 				lt(videosTable.createdAt, next),
 				eq(videosTable.type, 'clip'),
