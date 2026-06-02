@@ -1,27 +1,25 @@
-# dev
-.yarn/
-!.yarn/releases
-.vscode/*
-!.vscode/launch.json
-!.vscode/*.code-snippets
-!.vscode/settings.json
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# deps
-node_modules/
+# Test binary, built with `go test -c`
+*.test
 
-# env
-.env*
-!.env.example
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
-# logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Dependency directories (remove the comment below to include it)
+# vendor/
 
-# misc
-.DS_Store
-/uploads/
+# Go workspace file
+go.work
+/.idea
+
+*.env
+!example.env
