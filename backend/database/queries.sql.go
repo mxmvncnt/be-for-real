@@ -7,35 +7,133 @@ package database
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
-const getAllUsers = `-- name: getAllUsers :many
-SELECT id, username, email, password, description, profile_pic_url FROM users
+const createSession = `-- name: CreateSession :exec
+INSERT INTO sessions (token, user_id, expires_at, created_at)
+VALUES ($1::text, $2::uuid, $3::timestamptz, now())
 `
 
-func (q *Queries) getAllUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.Query(ctx, getAllUsers)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []User
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.Username,
-			&i.Email,
-			&i.Password,
-			&i.Description,
-			&i.ProfilePicUrl,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type CreateSessionParams struct {
+	Token     string
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) error {
+	_, err := q.db.Exec(ctx, createSession, arg.Token, arg.UserID, arg.ExpiresAt)
+	return err
+}
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO public.users (email, password, username, description, profile_pic_url)
+VALUES ($1::text, $2::text, $3::text, $4::text, $5::text)
+RETURNING id, username, email, password, description, profile_pic_url
+`
+
+type CreateUserParams struct {
+	Email         string
+	Password      string
+	Username      string
+	Description   string
+	ProfilePicUrl string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Email,
+		arg.Password,
+		arg.Username,
+		arg.Description,
+		arg.ProfilePicUrl,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Password,
+		&i.Description,
+		&i.ProfilePicUrl,
+	)
+	return i, err
+}
+
+const extendSession = `-- name: ExtendSession :exec
+UPDATE sessions
+SET expires_at = $1::timestamptz
+WHERE token = $2::text
+`
+
+type ExtendSessionParams struct {
+	ExpiresAt time.Time
+	Token     string
+}
+
+func (q *Queries) ExtendSession(ctx context.Context, arg ExtendSessionParams) error {
+	_, err := q.db.Exec(ctx, extendSession, arg.ExpiresAt, arg.Token)
+	return err
+}
+
+const getUserFromId = `-- name: GetUserFromId :one
+SELECT id, username, email, password, description, profile_pic_url
+FROM public.users
+WHERE id = $1::uuid
+`
+
+func (q *Queries) GetUserFromId(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserFromId, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Password,
+		&i.Description,
+		&i.ProfilePicUrl,
+	)
+	return i, err
+}
+
+const getUserFromToken = `-- name: GetUserFromToken :one
+SELECT users.id, users.username, users.email, users.password, users.description, users.profile_pic_url, sessions.token, sessions.user_id, sessions.created_at, sessions.expires_at
+FROM sessions JOIN users ON sessions.user_id = users.id
+WHERE sessions.token = $1::text
+LIMIT 1
+`
+
+type GetUserFromTokenRow struct {
+	User    User
+	Session Session
+}
+
+func (q *Queries) GetUserFromToken(ctx context.Context, token string) (GetUserFromTokenRow, error) {
+	row := q.db.QueryRow(ctx, getUserFromToken, token)
+	var i GetUserFromTokenRow
+	err := row.Scan(
+		&i.User.ID,
+		&i.User.Username,
+		&i.User.Email,
+		&i.User.Password,
+		&i.User.Description,
+		&i.User.ProfilePicUrl,
+		&i.Session.Token,
+		&i.Session.UserID,
+		&i.Session.CreatedAt,
+		&i.Session.ExpiresAt,
+	)
+	return i, err
+}
+
+const terminateSession = `-- name: TerminateSession :exec
+DELETE FROM sessions
+WHERE token = $1::text
+`
+
+func (q *Queries) TerminateSession(ctx context.Context, token string) error {
+	_, err := q.db.Exec(ctx, terminateSession, token)
+	return err
 }

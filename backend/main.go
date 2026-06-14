@@ -27,8 +27,11 @@ func main() {
 		logger.Fatalf("Failed to connect to database: %v", dbErr)
 	}
 
-	routes := routes.NewRoutesHandler(queries)
-	router.HandleFunc("GET /ping", middleware.Combined(routes.Ping))
+	routeHandler := routes.NewRoutesHandler(queries)
+	router.HandleFunc("GET /ping", middleware.Combined(routeHandler.Ping))
+	router.HandleFunc("POST /auth/register", middleware.Combined(routeHandler.Register))
+	router.HandleFunc("POST /auth/login", middleware.Combined(routeHandler.Login))
+	router.HandleFunc("DELETE /auth/logout", middleware.Combined(routeHandler.TerminateSession))
 
 	logger.Info("Server started on http://" + config.ServerHostname + ":" + config.ServerPort)
 	handler := cors.AllowAll().Handler(router)
