@@ -14,17 +14,18 @@ import (
 )
 
 func main() {
+	logger.Infof("Starting server with config: '%s'", config.ConfigName)
 	router := http.NewServeMux()
 
-	dbPool, dbErr := pgxpool.New(context.Background(), config.DatabaseURL)
-	if dbErr != nil {
-		logger.Fatalf("Failed to initialize database: %v", dbErr)
+	dbPool, err := pgxpool.New(context.Background(), config.DatabaseURL)
+	if err != nil {
+		logger.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer dbPool.Close()
 	queries := database.New(dbPool)
-	dbErr = dbPool.Ping(context.Background())
-	if dbErr != nil {
-		logger.Fatalf("Failed to connect to database: %v", dbErr)
+	err = dbPool.Ping(context.Background())
+	if err != nil {
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 
 	routeHandler := routes.NewRoutesHandler(queries)
@@ -35,7 +36,7 @@ func main() {
 
 	logger.Info("Server started on http://" + config.ServerHostname + ":" + config.ServerPort)
 	handler := cors.AllowAll().Handler(router)
-	err := http.ListenAndServe(config.ServerHostname+":"+config.ServerPort, handler)
+	err = http.ListenAndServe(config.ServerHostname+":"+config.ServerPort, handler)
 	if err != nil {
 		panic(err)
 	}
