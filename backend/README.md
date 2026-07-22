@@ -10,9 +10,11 @@ cest de la génération de code pour éviter d'avoir a établir la connexion a l
 en gros jutilise un logiciel qui sappelle SQLC que tu peux installer ici: https://docs.sqlc.dev/en/stable/overview/install.html 
 SQLC ça permet de definir un schema de DB dans le fichier [schema.sql](database/schema.sql). 
 pour les query a la DB jutilise le meme logiciel. faut les écrire dans le fichier  [queries.sql](database/queries.sql).
+c'est un peu de la magie mais que tu peux toute inspecter par la suite donc c'est pas tant magique la 
 
-mais la tu te demande surement mais comment ça marche ce logiciel la? en fait c'est super simple,
-quand tu as rempli les fichiers .sql en haut, tu peux juste faire la commande `sqlc genereate`. 
+mais la tu dis "wo menute la maxime la, c'est impossible la, ce que tu dis avec ta bouche! Ben arrete de nous bullshitter maxime, la!" 
+Ben je comprends parfaitement ton skepticism. Ben check ben comment ca marche, OK?
+en fait c'est super simple, quand tu as rempli les fichiers .sql en haut, tu peux juste faire la commande `sqlc genereate`. 
 ça va mettre a jour tous les fichiers dans le dossier database et creer des fonctions pour que tu puisse call ta DB depuis le code!! 
 
 C'est tu pas beautiful??
