@@ -13,11 +13,11 @@ pour les query a la DB jutilise le meme logiciel. faut les écrire dans le fichi
 c'est un peu de la magie mais que tu peux toute inspecter par la suite donc c'est pas tant magique la 
 
 mais la tu dis "wo menute la maxime la, c'est impossible la, ce que tu dis avec ta bouche! Ben arrete de nous bullshitter maxime, la!" 
-Ben je comprends parfaitement ton skepticism. Ben check ben comment ca marche, OK?
-en fait c'est super simple, quand tu as rempli les fichiers .sql en haut, tu peux juste faire la commande `sqlc genereate`. 
+Ben je comprends parfaitement ton skepticism. Ben check ben la demonstration qu'on va te montrer, OK?
+c'est super simple, quand tu as rempli les fichiers .sql en haut, tu peux juste faire la commande `sqlc genereate`. 
 ça va mettre a jour tous les fichiers dans le dossier database et creer des fonctions pour que tu puisse call ta DB depuis le code!! 
 
-C'est tu pas beautiful??
+C'est beautiful ça, hein?
 
 # go
 > Go my beloved c'est le meilleur language au monde entier
