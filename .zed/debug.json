@@ -1,0 +1,10 @@
+[
+  {
+    "label": "Debug backend",
+    "adapter": "Delve",
+    "request": "launch",
+    "mode": "debug",
+    "program": "go run ,",
+    "envFile": "./config/dev.env",
+  },
+]
